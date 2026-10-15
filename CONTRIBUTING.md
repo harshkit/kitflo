@@ -1,23 +1,23 @@
-# Contributing to OpenFlo
+# Contributing to Kitflo
 
-Thanks for helping. OpenFlo aims to stay **small, fast and fully local**. Please keep that in mind when proposing changes.
+Thanks for helping. Kitflo aims to stay **small, fast and fully local**. Please keep that in mind when proposing changes.
 
 ## Ground rules
 
 - **Nothing leaves the Mac.** PRs that add network calls, telemetry or cloud APIs won't be merged.
-- **Latency matters.** If a change touches the dictation path, include before/after timings from `OpenFlo --file`.
+- **Latency matters.** If a change touches the dictation path, include before/after timings from `Kitflo --file`.
 - **Keep it simple.** Prefer Apple frameworks and the standard library over new dependencies. Currently there are none.
 
 ## Getting started
 
 ```bash
-git clone https://github.com/<you>/openflo.git && cd openflo
+git clone https://github.com/<you>/kitflo.git && cd kitflo
 brew install llama.cpp
 # download the model as shown in the README ("Build from source"), then:
 swift build -c release
-.build/release/OpenFlo --selftest
-.build/release/OpenFlo --file sample.wav
-./build.sh   # installs ~/Applications/OpenFlo.app
+.build/release/Kitflo --selftest
+.build/release/Kitflo --file sample.wav
+./build.sh   # installs ~/Applications/Kitflo.app
 ```
 
 Tip: `say -o sample.wav --data-format=LEI16@16000 "um so, uh, meet at 5, no wait, 6"` makes quick test audio.

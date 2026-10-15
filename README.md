@@ -1,36 +1,36 @@
-<p align="center"><img src="assets/icon.png" width="128" alt="OpenFlo, a free offline voice dictation app for Mac"></p>
+<p align="center"><img src="assets/icon.png" width="128" alt="Kitflo, a free offline voice dictation app for Mac"></p>
 
-<h1 align="center">OpenFlo</h1>
+<h1 align="center">Kitflo</h1>
 
 <p align="center"><b>Free, open-source, offline voice dictation and meeting notes for Mac.</b><br>
 Hold <code>fn</code>, talk, let go and clean text appears in any app. Record a meeting and get who-said-what plus AI notes.<br>100% on-device: no cloud, no account, no subscription.</p>
 
 <p align="center">
-  <a href="https://github.com/harshkit/openflo/releases/latest"><img src="https://img.shields.io/github/v/release/harshkit/openflo?label=download&color=ff9e52" alt="Latest release"></a>
+  <a href="https://github.com/harshkit/kitflo/releases/latest"><img src="https://img.shields.io/github/v/release/harshkit/kitflo?label=download&color=ff9e52" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/macOS-26%2B-black?logo=apple" alt="macOS 26+">
   <img src="https://img.shields.io/badge/Apple%20Silicon-M1%E2%80%93M5-black" alt="Apple Silicon">
   <img src="https://img.shields.io/badge/100%25-offline-2ea44f" alt="100% offline">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
-  <a href="https://github.com/harshkit/openflo/stargazers"><img src="https://img.shields.io/github/stars/harshkit/openflo?style=social" alt="GitHub stars"></a>
+  <a href="https://github.com/harshkit/kitflo/stargazers"><img src="https://img.shields.io/github/stars/harshkit/kitflo?style=social" alt="GitHub stars"></a>
 </p>
 
-<p align="center"><a href="https://www.harshkit.com/apps/openflo/">Website</a> · <a href="#install-one-line">Install</a> · <a href="#-new-meeting-notes">Meeting notes</a> · <a href="#features">Features</a> · <a href="PRIVACY.md">Privacy</a></p>
+<p align="center"><a href="https://www.harshkit.com/apps/kitflo/">Website</a> · <a href="#install-one-line">Install</a> · <a href="#-new-meeting-notes">Meeting notes</a> · <a href="#features">Features</a> · <a href="PRIVACY.md">Privacy</a></p>
 
 ---
 
-OpenFlo is a **free, private alternative to paid AI dictation and meeting-note apps** like Wispr Flow, Superwhisper, Otter and Granola. It turns rambling speech into clean writing in **under a second**, and turns meetings into a who-said-what transcript plus notes, without anything leaving your Mac.
+Kitflo is a **free, private alternative to paid AI dictation and meeting-note apps** like Wispr Flow, Superwhisper, Otter and Granola. It turns rambling speech into clean writing in **under a second**, and turns meetings into a who-said-what transcript plus notes, without anything leaving your Mac.
 
 ## Install (one line)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/harshkit/openflo/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/harshkit/kitflo/main/install.sh | bash
 ```
 
 That installs everything: the local AI engine, the ~1 GB cleanup model and the app. The ~0.57 GB speech model downloads the first time you dictate. Then allow **Microphone** and **Accessibility** when asked, and set **System Settings → Keyboard → "Press 🌐 key to" → Do Nothing**.
 
 ## 🆕 Meeting notes
 
-Record a meeting, call, demo or anything on screen. OpenFlo works out **who said what** and writes the notes for you, on your Mac.
+Record a meeting, call, demo or anything on screen. Kitflo works out **who said what** and writes the notes for you, on your Mac.
 
 | | |
 |---|---|
@@ -40,9 +40,9 @@ Record a meeting, call, demo or anything on screen. OpenFlo works out **who said
 | ⏯️ **Floating recording bar** | Timer, **pause/resume**, **mic** and **camera** on/off, stop. Paused parts are cut out of the video |
 | 👀 **Reads your screen** | Text on screen is read on-device every few seconds, so notes cover what you **showed**, not just what you said |
 | 📝 **AI notes** | Title, summary, key points, **action items with owners** and decisions, plus the full timestamped transcript |
-| 📁 **Your files** | Video or audio saved to `~/Movies/OpenFlo` (changeable). Copy notes anywhere with one click |
+| 📁 **Your files** | Video or audio saved to `~/Movies/Kitflo` (changeable). Copy notes anywhere with one click |
 
-Meeting notes need **Screen Recording** permission (for system audio and video): **Notes tab → Allow Screen Recording**, turn OpenFlo on, then **Restart OpenFlo**.
+Meeting notes need **Screen Recording** permission (for system audio and video): **Notes tab → Allow Screen Recording**, turn Kitflo on, then **Restart Kitflo**.
 
 ## Features
 
@@ -58,9 +58,9 @@ Meeting notes need **Screen Recording** permission (for system audio and video):
 - 🌍 **12 languages**, including English (India, US, UK, Australia), Spanish, French, German, Italian, Portuguese, Japanese, Korean and Chinese.
 - 🔒 **Private by design**: no telemetry, no servers, no account. Audio is never saved. See [PRIVACY.md](PRIVACY.md).
 
-## OpenFlo vs. cloud dictation apps
+## Kitflo vs. cloud dictation apps
 
-| | OpenFlo | Typical cloud dictation app |
+| | Kitflo | Typical cloud dictation app |
 |---|---|---|
 | Price | **Free forever** | $12–15/month |
 | Where your voice goes | **Stays on your Mac** | Uploaded to servers |
@@ -94,33 +94,33 @@ On test clips with names and tech words from the Dictionary (GitHub, README, Cla
 ## Build from source
 
 ```bash
-git clone https://github.com/harshkit/openflo.git && cd openflo
+git clone https://github.com/harshkit/kitflo.git && cd kitflo
 brew install llama.cpp
-mkdir -p ~/Library/Application\ Support/OpenFlo/models && curl -L -o ~/Library/Application\ Support/OpenFlo/models/qwen2.5-1.5b-instruct-q4_k_m.gguf \
+mkdir -p ~/Library/Application\ Support/Kitflo/models && curl -L -o ~/Library/Application\ Support/Kitflo/models/qwen2.5-1.5b-instruct-q4_k_m.gguf \
   https://huggingface.co/bartowski/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf
 swift build -c release
-.build/release/OpenFlo --selftest           # logic checks
-.build/release/OpenFlo --file speech.wav    # run the full pipeline on a file and print timings
-./build.sh              # installs ~/Applications/OpenFlo.app
+.build/release/Kitflo --selftest           # logic checks
+.build/release/Kitflo --file speech.wav    # run the full pipeline on a file and print timings
+./build.sh              # installs ~/Applications/Kitflo.app
 ```
 
 | File | What's in it |
 |---|---|
-| `Sources/OpenFlo/Engine.swift` | recorder, speech session, LLM cleanup, dictionary/snippets, paste |
-| `Sources/OpenFlo/Overlay.swift` | the floating pill |
-| `Sources/OpenFlo/Views.swift` | Home, Notes, Dictionary, Snippets, Style, Settings |
-| `Sources/OpenFlo/App.swift` | menu bar, hotkey, window |
-| `Sources/OpenFlo/Store.swift` | local storage (`~/Library/Application Support/OpenFlo/`) |
+| `Sources/Kitflo/Engine.swift` | recorder, speech session, LLM cleanup, dictionary/snippets, paste |
+| `Sources/Kitflo/Overlay.swift` | the floating pill |
+| `Sources/Kitflo/Views.swift` | Home, Notes, Dictionary, Snippets, Style, Settings |
+| `Sources/Kitflo/App.swift` | menu bar, hotkey, window |
+| `Sources/Kitflo/Store.swift` | local storage (`~/Library/Application Support/Kitflo/`) |
 
 ## FAQ
 
-**Is OpenFlo really free?** Yes. It's MIT-licensed, with no paid tier and no usage limits.
+**Is Kitflo really free?** Yes. It's MIT-licensed, with no paid tier and no usage limits.
 
 **Does it work without internet?** Yes, after the one-time install.
 
-**Is it a Wispr Flow alternative?** It covers the same core workflow (hold a key, speak, get clean text) but runs entirely on your Mac. OpenFlo is an independent project and is not affiliated with Wispr or any other company.
+**Is it a Wispr Flow alternative?** It covers the same core workflow (hold a key, speak, get clean text) but runs entirely on your Mac. Kitflo is an independent project and is not affiliated with Wispr or any other company.
 
-**Text didn't paste?** Check that Accessibility is on for OpenFlo and that the 🌐 key is set to "Do Nothing". OpenFlo warns you on its Home screen when either is wrong, and the text always stays on your clipboard as a fallback.
+**Text didn't paste?** Check that Accessibility is on for Kitflo and that the 🌐 key is set to "Do Nothing". Kitflo warns you on its Home screen when either is wrong, and the text always stays on your clipboard as a fallback.
 
 **Windows / Android?** Android is next on the roadmap.
 
@@ -133,7 +133,7 @@ swift build -c release
 
 ## Contributing
 
-PRs welcome. See [CONTRIBUTING.md](CONTRIBUTING.md), the [Code of Conduct](CODE_OF_CONDUCT.md) and the [Security Policy](SECURITY.md). If OpenFlo saves you time, a ⭐ helps other people find it.
+PRs welcome. See [CONTRIBUTING.md](CONTRIBUTING.md), the [Code of Conduct](CODE_OF_CONDUCT.md) and the [Security Policy](SECURITY.md). If Kitflo saves you time, a ⭐ helps other people find it.
 
 ## License
 

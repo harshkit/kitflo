@@ -9,7 +9,7 @@ struct MeetingsPage: View {
             MeetingDetail(id: id)
         } else {
             VStack(alignment: .leading, spacing: 22) {
-                Title(text: "Notes", sub: "Record a meeting, call or anything on screen. OpenFlo works out who said what and writes the notes, all on this Mac.")
+                Title(text: "Notes", sub: "Record a meeting, call or anything on screen. Kitflo works out who said what and writes the notes, all on this Mac.")
                 RecorderCard()
                 if !store.s.meetings.isEmpty {
                     Text("Recordings").font(.headline).padding(.top, 6)
@@ -35,10 +35,10 @@ struct RecorderCard: View {
     @Bindable private var store = Store.shared
 
     /// Screen Recording is needed for system audio and video. Asking (CGRequestScreenCaptureAccess) is what puts
-    /// OpenFlo into the list in System Settings; macOS only applies a new grant after the app restarts.
+    /// Kitflo into the list in System Settings; macOS only applies a new grant after the app restarts.
     private var permission: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("OpenFlo needs Screen Recording to capture system audio and the screen.", systemImage: "exclamationmark.triangle.fill")
+            Label("Kitflo needs Screen Recording to capture system audio and the screen.", systemImage: "exclamationmark.triangle.fill")
                 .font(.callout).foregroundStyle(.orange)
             HStack {
                 Button("Allow Screen Recording") {
@@ -47,9 +47,9 @@ struct RecorderCard: View {
                     }
                 }
                 Button("Fix permissions") { Permissions.fix() }
-                Button("Restart OpenFlo") { Self.relaunch() }
+                Button("Restart Kitflo") { Self.relaunch() }
             }
-            Text("Turn OpenFlo on in the list, then press Restart OpenFlo so macOS applies it. If the switch keeps turning off, press Fix permissions first.").font(.caption).foregroundStyle(.secondary)
+            Text("Turn Kitflo on in the list, then press Restart Kitflo so macOS applies it. If the switch keeps turning off, press Fix permissions first.").font(.caption).foregroundStyle(.secondary)
         }
     }
 
@@ -302,7 +302,7 @@ struct TranscriptView: View {
     }
 }
 
-// MARK: - Floating recording bar (stays out of the recording: OpenFlo's own windows are excluded from capture)
+// MARK: - Floating recording bar (stays out of the recording: Kitflo's own windows are excluded from capture)
 
 final class RecordingBar {
     private let panel: NSPanel
@@ -361,7 +361,7 @@ struct RecordingBarView: View {
     }
 }
 
-/// Clears OpenFlo's stale permission entries and asks macOS again. Needed when a switch shows "on" but belongs to an
+/// Clears Kitflo's stale permission entries and asks macOS again. Needed when a switch shows "on" but belongs to an
 /// older build, so macOS ignores it. The user still approves each prompt; a restart makes macOS apply the grants.
 enum Permissions {
     static func fix() {

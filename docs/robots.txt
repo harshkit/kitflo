@@ -1,3 +1,3 @@
 User-agent: *
 Allow: /
-Sitemap: https://www.harshkit.com/apps/openflo/sitemap.xml
+Sitemap: https://www.harshkit.com/apps/kitflo/sitemap.xml

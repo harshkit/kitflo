@@ -72,8 +72,8 @@ struct Meeting: Codable, Identifiable {
     var source = "Entire screen"
     var segments: [Segment] = []
     var notes = ""
-    var file: String?          // recording on disk (~/Movies/OpenFlo)
-    var status: String?        // non-nil while OpenFlo is still processing it
+    var file: String?          // recording on disk (~/Movies/Kitflo)
+    var status: String?        // non-nil while Kitflo is still processing it
     var screenText: String?    // text read from the screen while recording, used for the notes
 }
 
@@ -82,7 +82,7 @@ struct Saved: Codable {
     var words: [String] = []
     var snippets: [Snippet] = []
     var meetings: [Meeting] = []
-    var recordingsFolder: String?   // nil = ~/Movies/OpenFlo
+    var recordingsFolder: String?   // nil = ~/Movies/Kitflo
     var recordMode: RecordMode = .screen
     var style: Style = .casual
     var hotkey: Hotkey = .fn
@@ -111,9 +111,9 @@ struct Saved: Codable {
     }
 }
 
-/// Plain-text diagnostics at ~/Library/Logs/OpenFlo.log (permission states, recording start/stop, errors). No speech or text.
+/// Plain-text diagnostics at ~/Library/Logs/Kitflo.log (permission states, recording start/stop, errors). No speech or text.
 enum Log {
-    static let url = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0].appending(path: "Logs/OpenFlo.log")
+    static let url = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0].appending(path: "Logs/Kitflo.log")
     static func write(_ line: String) {
         let entry = "\(Date().formatted(.iso8601)) \(line)\n"
         if let h = try? FileHandle(forWritingTo: url) { h.seekToEndOfFile(); h.write(Data(entry.utf8)); try? h.close() }
@@ -128,7 +128,7 @@ enum Log {
     var s = Saved() { didSet { save() } }
 
     @ObservationIgnored private let url: URL = {
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appending(path: "OpenFlo")
+        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appending(path: "Kitflo")
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir.appending(path: "store.json")
     }()
@@ -138,7 +138,7 @@ enum Log {
     }
 
     /// True when the 🌐/fn key still triggers a macOS action on release (emoji picker, input switch),
-    /// which steals focus from the text field right before OpenFlo pastes.
+    /// which steals focus from the text field right before Kitflo pastes.
     var fnKeyConflicts: Bool {
         (UserDefaults(suiteName: "com.apple.HIToolbox")?.object(forKey: "AppleFnUsageType") as? Int ?? 2) != 0
     }

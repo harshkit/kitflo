@@ -8,7 +8,7 @@ import Speech
 
 enum LLM {
     static let model = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        .appending(path: "OpenFlo/models/qwen2.5-1.5b-instruct-q4_k_m.gguf").path
+        .appending(path: "Kitflo/models/qwen2.5-1.5b-instruct-q4_k_m.gguf").path
     /// `--file` test runs use their own port so they never kill the running app's server.
     static var port = 8179
     static var url: URL { URL(string: "http://127.0.0.1:\(port)")! }
@@ -233,7 +233,7 @@ final class Recorder {
         frames = 0; peak = 0; envelope = 0.05
         let input = engine.inputNode
         let inFmt = input.outputFormat(forBus: 0)
-        guard let conv = AVAudioConverter(from: inFmt, to: outFmt) else { throw NSError(domain: "OpenFlo", code: 1) }
+        guard let conv = AVAudioConverter(from: inFmt, to: outFmt) else { throw NSError(domain: "Kitflo", code: 1) }
         input.installTap(onBus: 0, bufferSize: 1024, format: inFmt) { [weak self] buf, _ in
             guard let self else { return }
             let cap = AVAudioFrameCount(Double(buf.frameLength) * outFmt.sampleRate / inFmt.sampleRate) + 16
@@ -471,7 +471,7 @@ enum Post {
         }
     }
 
-    /// `OpenFlo --file speech.wav`: runs the same pipeline on a file and prints timings.
+    /// `Kitflo --file speech.wav`: runs the same pipeline on a file and prints timings.
     func runFile(_ path: String) async {
         let args = CommandLine.arguments
         LLM.port = 8180

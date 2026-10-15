@@ -32,7 +32,7 @@ struct MainView: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Image(systemName: "waveform").font(.system(size: 15, weight: .bold))
-                    Text("OpenFlo").font(.system(size: 17, weight: .semibold, design: .serif))
+                    Text("Kitflo").font(.system(size: 17, weight: .semibold, design: .serif))
                 }
                 .padding(.horizontal, 10).padding(.top, 40).padding(.bottom, 18)
                 ForEach(Page.allCases) { p in
@@ -170,7 +170,7 @@ struct SetupWarnings: View {
     var body: some View {
         VStack(spacing: 8) {
             if !AXIsProcessTrusted() {
-                Warning(text: "OpenFlo can't paste yet. Turn it on in Privacy & Security → Accessibility.",
+                Warning(text: "Kitflo can't paste yet. Turn it on in Privacy & Security → Accessibility.",
                         button: "Open Accessibility",
                         url: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
             }
@@ -206,7 +206,7 @@ struct DictionaryPage: View {
     @State private var word = ""
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Title(text: "Dictionary", sub: "Names, brands and jargon OpenFlo should always spell your way.")
+            Title(text: "Dictionary", sub: "Names, brands and jargon Kitflo should always spell your way.")
             HStack {
                 TextField("Add a word, e.g. TrackingFlo", text: $word).textFieldStyle(.roundedBorder).onSubmit(add)
                 Button("Add", action: add).disabled(word.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -289,7 +289,7 @@ struct StylePage: View {
     @Bindable var store = Store.shared
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Title(text: "Style", sub: "How your words should read once OpenFlo tidies them up.")
+            Title(text: "Style", sub: "How your words should read once Kitflo tidies them up.")
             ForEach(Style.allCases) { st in
                 Button { store.s.style = st } label: {
                     HStack {
@@ -345,7 +345,7 @@ struct SettingsPage: View {
                         Text("Switch on in System Settings but still shown as off here?").font(.caption).foregroundStyle(.secondary)
                         Spacer()
                         Button("Fix permissions") { Permissions.fix() }
-                        Button("Restart OpenFlo") { RecorderCard.relaunch() }
+                        Button("Restart Kitflo") { RecorderCard.relaunch() }
                     }
                     perm("Screen Recording (only for meeting notes)", ok: screenOK) {
                         if !CGRequestScreenCaptureAccess() { NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!) }
@@ -380,7 +380,7 @@ struct SettingsPage: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(store.s.engine == .parakeet ? "Speech: NVIDIA Parakeet TDT 0.6B v3 + CTC dictionary boost (Neural Engine, FluidAudio)" : "Speech: Apple on-device SpeechAnalyzer (Neural Engine, live streaming)")
                     Text("Cleanup: Qwen2.5 1.5B Instruct (Q4, Metal via llama.cpp)")
-                    Text("Models folder: ~/Library/Application Support/OpenFlo/models").foregroundStyle(.secondary)
+                    Text("Models folder: ~/Library/Application Support/Kitflo/models").foregroundStyle(.secondary)
                 }.font(.callout).frame(maxWidth: .infinity, alignment: .leading).padding(8)
             }
             HStack {

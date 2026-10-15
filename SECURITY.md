@@ -10,9 +10,9 @@ Include what you found, how to reproduce it and what an attacker could do with i
 
 Things we especially want to hear about:
 
-- Ways another app or a website could read your transcripts, history or clipboard through OpenFlo
-- Ways to reach or abuse the local `llama-server` (it should accept only OpenFlo's per-launch key)
-- OpenFlo capturing audio or keys when the dictation key isn't held
+- Ways another app or a website could read your transcripts, history or clipboard through Kitflo
+- Ways to reach or abuse the local `llama-server` (it should accept only Kitflo's per-launch key)
+- Kitflo capturing audio or keys when the dictation key isn't held
 
 ## Supported versions
 

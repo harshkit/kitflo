@@ -5,6 +5,7 @@ import SwiftUI
 @main
 enum Main {
     static func main() {
+        migrateFromOpenFlo()
         let args = CommandLine.arguments
         if args.contains("--selftest") { Post.selfTest(); return }
         if args.contains("--record-test") {
@@ -27,6 +28,24 @@ enum Main {
     }
 }
 
+/// One-time move from the old OpenFlo name: data, models and recordings carry over to the Kitflo folders.
+/// The bundle ID stays com.openflo.app, so macOS permissions are kept.
+func migrateFromOpenFlo() {
+    let fm = FileManager.default
+    let support = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+    let movies = fm.urls(for: .moviesDirectory, in: .userDomainMask)[0]
+    for base in [support, movies] {
+        let old = base.appending(path: "OpenFlo"), new = base.appending(path: "Kitflo")
+        if fm.fileExists(atPath: old.path), !fm.fileExists(atPath: new.path) { try? fm.moveItem(at: old, to: new) }
+    }
+    // Saved recordings point at files that just moved.
+    let store = support.appending(path: "Kitflo/store.json")
+    if let text = try? String(contentsOf: store, encoding: .utf8), text.contains("Movies\\/OpenFlo") || text.contains("Movies/OpenFlo") {
+        let fixed = text.replacingOccurrences(of: "Movies\\/OpenFlo", with: "Movies\\/Kitflo").replacingOccurrences(of: "Movies/OpenFlo", with: "Movies/Kitflo")
+        try? fixed.write(to: store, atomically: true, encoding: .utf8)
+    }
+}
+
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var status: NSStatusItem!
     private var overlay: OverlayPanel!
@@ -36,12 +55,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ n: Notification) {
         status = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        status.button?.image = NSImage(systemSymbolName: "waveform", accessibilityDescription: "OpenFlo")
+        status.button?.image = NSImage(systemSymbolName: "waveform", accessibilityDescription: "Kitflo")
         let menu = NSMenu()
-        menu.addItem(withTitle: "Open OpenFlo", action: #selector(openWindow), keyEquivalent: "o")
+        menu.addItem(withTitle: "Open Kitflo", action: #selector(openWindow), keyEquivalent: "o")
         menu.addItem(withTitle: "Record Meeting Notes", action: #selector(newNote), keyEquivalent: "n")
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Quit OpenFlo", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        menu.addItem(withTitle: "Quit Kitflo", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         status.menu = menu
 
         NSApp.mainMenu = Self.mainMenu()
@@ -55,14 +74,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if !trusted || Store.shared.s.history.isEmpty { openWindow() }
     }
 
-    /// Standard app + Edit menus: Quit, and ⌘C/⌘V/⌘A inside OpenFlo's own text fields (Notes needs these).
+    /// Standard app + Edit menus: Quit, and ⌘C/⌘V/⌘A inside Kitflo's own text fields (Notes needs these).
     private static func mainMenu() -> NSMenu {
         let main = NSMenu()
         let appItem = NSMenuItem(), app = NSMenu()
-        app.addItem(withTitle: "About OpenFlo", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        app.addItem(withTitle: "About Kitflo", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
         app.addItem(.separator())
-        app.addItem(withTitle: "Hide OpenFlo", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
-        app.addItem(withTitle: "Quit OpenFlo", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        app.addItem(withTitle: "Hide Kitflo", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        app.addItem(withTitle: "Quit Kitflo", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appItem.submenu = app
         main.addItem(appItem)
         let editItem = NSMenuItem(), edit = NSMenu(title: "Edit")
@@ -130,7 +149,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                              styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                              backing: .buffered, defer: false)
             w.titlebarAppearsTransparent = true
-            w.title = "OpenFlo"
+            w.title = "Kitflo"
             w.isReleasedWhenClosed = false
             w.contentView = NSHostingView(rootView: MainView())
             w.center()

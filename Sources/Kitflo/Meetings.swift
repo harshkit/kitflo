@@ -30,8 +30,8 @@ import Vision
     @ObservationIgnored private var pauses: [(CMTime, CMTime?)] = []  // host-time pause intervals, cut out at Stop
     @ObservationIgnored private var pausedAt: CMTime?
     @ObservationIgnored private var pausedTotal = CMTime.zero
-    @ObservationIgnored private let videoQueue = DispatchQueue(label: "openflo.meeting.video")
-    @ObservationIgnored private let ocrQueue = DispatchQueue(label: "openflo.meeting.ocr", qos: .utility)
+    @ObservationIgnored private let videoQueue = DispatchQueue(label: "kitflo.meeting.video")
+    @ObservationIgnored private let ocrQueue = DispatchQueue(label: "kitflo.meeting.ocr", qos: .utility)
     @ObservationIgnored private var lastOCR = CMTime.zero
     @ObservationIgnored private var screenLines: [String] = []
     @ObservationIgnored private var bar: RecordingBar?
@@ -39,7 +39,7 @@ import Vision
 
     @ObservationIgnored private var stream: SCStream?
     @ObservationIgnored private var output: SCRecordingOutput?
-    @ObservationIgnored private let queue = DispatchQueue(label: "openflo.meeting.audio")
+    @ObservationIgnored private let queue = DispatchQueue(label: "kitflo.meeting.audio")
     @ObservationIgnored private let lock = NSLock()
     @ObservationIgnored private var mic = Track()
     @ObservationIgnored private var sys = Track()
@@ -78,7 +78,7 @@ import Vision
         SCContentSharingPicker.shared.remove(self)
     }
 
-    /// Called on quit: stop any capture right away so nothing keeps the mic or screen after OpenFlo exits.
+    /// Called on quit: stop any capture right away so nothing keeps the mic or screen after Kitflo exits.
     func shutdown() {
         releasePicker()
         guard let s = stream else { return }
@@ -114,7 +114,7 @@ import Vision
     }
 
     func contentSharingPickerStartDidFailWithError(_ error: Error) {
-        DispatchQueue.main.async { self.error = "Couldn't open the picker. Allow Screen Recording for OpenFlo in System Settings → Privacy & Security." }
+        DispatchQueue.main.async { self.error = "Couldn't open the picker. Allow Screen Recording for Kitflo in System Settings → Privacy & Security." }
     }
 
     func start(mode: RecordMode, micOn: Bool, systemOn: Bool) async {
@@ -145,7 +145,7 @@ import Vision
                     filter = p
                 }
             default:
-                // A whole screen: everything except OpenFlo's own windows; the camera bubble is the one exception.
+                // A whole screen: everything except Kitflo's own windows; the camera bubble is the one exception.
                 let id = picked?.includedDisplays.first?.displayID ?? display.displayID
                 let screen = fresh.displays.first { $0.displayID == id } ?? display
                 filter = SCContentFilter(display: screen, excludingApplications: mine, exceptingWindows: bubble)
@@ -182,7 +182,7 @@ import Vision
             lock.withLock { mic = Track(); sys = Track(); t0 = nil; pausedAt = nil; pausedTotal = .zero }
             do { try await s.startCapture() }
             catch let e as NSError where e.domain == SCStreamErrorDomain && micOn {
-                // The mic can be busy for a moment (another app, or OpenFlo's dictation). Retry once, then go without it.
+                // The mic can be busy for a moment (another app, or Kitflo's dictation). Retry once, then go without it.
                 Log.write("mic busy (\(e.code)), retrying")
                 try await Task.sleep(for: .seconds(1))
                 do { try await s.startCapture() }
@@ -211,7 +211,7 @@ import Vision
                 camera?.close(); camera = nil
                 if let f = error as? Fail { self.error = f.message }
                 else if !CGPreflightScreenCaptureAccess() {
-                    self.error = "macOS hasn't given OpenFlo Screen Recording yet. Use “Fix permissions” below, allow it, then restart OpenFlo."
+                    self.error = "macOS hasn't given Kitflo Screen Recording yet. Use “Fix permissions” below, allow it, then restart Kitflo."
                 } else {
                     self.error = "Couldn't start recording: \(ns.localizedDescription) (\(ns.domain) \(ns.code))"
                 }
@@ -221,7 +221,7 @@ import Vision
 
     /// One continuous movie file. Pause doesn't touch it; the paused stretches are cut out when you press Stop.
     private func addVideo(to s: SCStream) throws {
-        let url = Self.folder.appending(path: "OpenFlo \(Self.stamp()).mov")
+        let url = Self.folder.appending(path: "Kitflo \(Self.stamp()).mov")
         let rc = SCRecordingOutputConfiguration()
         rc.outputURL = url
         rc.outputFileType = .mov
@@ -270,7 +270,7 @@ import Vision
         camera?.setVisible(cameraLive)
     }
 
-    /// `OpenFlo --record-test`: records the screen 3 s, pauses 1 s, records 3 s more, stops, and reports the files (test mode).
+    /// `Kitflo --record-test`: records the screen 3 s, pauses 1 s, records 3 s more, stops, and reports the files (test mode).
     func recordTest() async {
         await start(mode: CommandLine.arguments.contains("--audio") ? .audio : .screen, micOn: false, systemOn: true)
         print("started:", recording, error ?? "")
@@ -407,7 +407,7 @@ import Vision
 
     static let monoFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: rate, channels: 1, interleaved: false)!
 
-    static var defaultFolder: URL { FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask)[0].appending(path: "OpenFlo") }
+    static var defaultFolder: URL { FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask)[0].appending(path: "Kitflo") }
 
     static var folder: URL {
         let dir = Store.shared.s.recordingsFolder.map { URL(fileURLWithPath: $0) } ?? defaultFolder
@@ -461,7 +461,7 @@ import Vision
     }
 
     static func saveAudio(_ samples: [Float]) throws -> URL {
-        let url = folder.appending(path: "OpenFlo \(stamp()).m4a")
+        let url = folder.appending(path: "Kitflo \(stamp()).m4a")
         let file = try AVAudioFile(forWriting: url, settings: [AVFormatIDKey: kAudioFormatMPEG4AAC, AVSampleRateKey: rate, AVNumberOfChannelsKey: 1])
         let buf = AVAudioPCMBuffer(pcmFormat: monoFormat, frameCapacity: AVAudioFrameCount(samples.count))!
         buf.frameLength = AVAudioFrameCount(samples.count)
@@ -497,7 +497,7 @@ final class RecordingDelegate: NSObject, SCRecordingOutputDelegate {
 // MARK: - Camera bubble (a floating round webcam view that gets captured with the screen)
 
 final class CameraBubble {
-    static let title = "OpenFlo Camera"
+    static let title = "Kitflo Camera"
     private let panel: NSPanel
     private let session = AVCaptureSession()
 
@@ -656,7 +656,7 @@ enum MeetingNotes {
         return segments
     }
 
-    /// `OpenFlo --meeting mic.wav system.wav`: runs the same analysis on files and prints it (test mode).
+    /// `Kitflo --meeting mic.wav system.wav`: runs the same analysis on files and prints it (test mode).
     static func cli(_ micPath: String, _ sysPath: String) async {
         func load(_ p: String) -> [Float] {
             guard let f = try? AVAudioFile(forReading: URL(fileURLWithPath: p)),
