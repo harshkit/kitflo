@@ -23,5 +23,5 @@ body:
     id: log
     attributes:
       label: Diagnostics log (optional)
-      description: Last lines of ~/Library/Logs/Kitflo.log. It contains no speech or text.
+      description: "Last lines of ~/Library/Logs/Kitflo.log. It has no speech or text, but check it before pasting and remove anything personal, since this issue is public."
       render: text

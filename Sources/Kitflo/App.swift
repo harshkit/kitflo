@@ -70,7 +70,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let trusted = AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary)
         installHotkey()
         let sig = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
-        Log.write("launch v\(sig) accessibility=\(trusted) screenRecording=\(CGPreflightScreenCaptureAccess()) mic=\(AVCaptureDevice.authorizationStatus(for: .audio).rawValue) camera=\(AVCaptureDevice.authorizationStatus(for: .video).rawValue) path=\(Bundle.main.bundlePath)")
+        Log.write("launch v\(sig) accessibility=\(trusted) screenRecording=\(CGPreflightScreenCaptureAccess()) mic=\(AVCaptureDevice.authorizationStatus(for: .audio).rawValue) camera=\(AVCaptureDevice.authorizationStatus(for: .video).rawValue)")
         if !trusted || Store.shared.s.history.isEmpty { openWindow() }
     }
 

@@ -152,7 +152,7 @@ import Vision
             }
 
             var cfg = SCStreamConfiguration()
-            Log.write("start mode=\(mode.rawValue) source=\(pickedLabel) mic=\(micOn) system=\(systemOn) screenPerm=\(CGPreflightScreenCaptureAccess())")
+            Log.write("start mode=\(mode.rawValue) source=\(picked == nil ? "screen" : picked!.style == .window ? "window" : picked!.style == .application ? "app" : "screen") mic=\(micOn) system=\(systemOn) screenPerm=\(CGPreflightScreenCaptureAccess())")
             cfg.capturesAudio = systemOn
             cfg.excludesCurrentProcessAudio = true
             cfg.captureMicrophone = micOn
