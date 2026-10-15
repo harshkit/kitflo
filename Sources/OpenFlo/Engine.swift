@@ -9,7 +9,9 @@ import Speech
 enum LLM {
     static let model = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         .appending(path: "OpenFlo/models/qwen2.5-1.5b-instruct-q4_k_m.gguf").path
-    static let url = URL(string: "http://127.0.0.1:8179")!
+    /// `--file` test runs use their own port so they never kill the running app's server.
+    static var port = 8179
+    static var url: URL { URL(string: "http://127.0.0.1:\(port)")! }
     static var proc: Process?
     /// Fresh secret each launch so websites in your browser can't use the local server.
     static let key = UUID().uuidString
@@ -18,11 +20,11 @@ enum LLM {
         // A server left over from a crash holds the port with an old key; clear it first.
         let kill = Process()
         kill.executableURL = URL(fileURLWithPath: "/usr/bin/pkill")
-        kill.arguments = ["-f", "llama-server .*--port 8179"]
+        kill.arguments = ["-f", "llama-server .*--port \(port) "]
         try? kill.run(); kill.waitUntilExit()
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/opt/homebrew/bin/llama-server")
-        p.arguments = ["-m", model, "--host", "127.0.0.1", "--port", "8179", "-ngl", "99", "-c", "4096", "-fa", "on", "--parallel", "1", "--api-key", key, "--no-slots"]
+        p.arguments = ["-m", model, "--host", "127.0.0.1", "--port", "\(port)", "-ngl", "99", "-c", "4096", "-fa", "on", "--parallel", "1", "--api-key", key, "--no-slots"]
         p.standardOutput = FileHandle.nullDevice
         p.standardError = FileHandle.nullDevice
         try? p.run()
@@ -32,8 +34,22 @@ enum LLM {
     static func stop() { proc?.terminate() }
 
     static func ready() async -> Bool {
-        guard let (_, r) = try? await URLSession.shared.data(from: url.appending(path: "health")) else { return false }
+        var req = URLRequest(url: url.appending(path: "health"))
+        req.timeoutInterval = 3
+        guard let (_, r) = try? await URLSession.shared.data(for: req) else { return false }
         return (r as? HTTPURLResponse)?.statusCode == 200
+    }
+
+    /// Restarts the server if it died (crash, or killed from outside) and warms its prompt cache again.
+    static var healing = false
+    static func heal() async {
+        guard !healing, !(await ready()) else { return }
+        healing = true
+        defer { healing = false }
+        start()
+        for _ in 0..<100 where !(await ready()) { try? await Task.sleep(for: .milliseconds(300)) }
+        let s = Store.shared.s
+        _ = await polish("um hello there", app: "Notes", style: s.style, vocabulary: s.words)
     }
 
     static let rules = """
@@ -77,8 +93,11 @@ enum LLM {
         req.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
         req.httpBody = try? JSONSerialization.data(withJSONObject: payload)
         req.timeoutInterval = 6
-        guard let (d, _) = try? await URLSession.shared.data(for: req),
-              let j = try? JSONSerialization.jsonObject(with: d) as? [String: Any],
+        guard let (d, _) = try? await URLSession.shared.data(for: req) else {
+            if port == 8179 { Task { await heal() } }
+            return raw
+        }
+        guard let j = try? JSONSerialization.jsonObject(with: d) as? [String: Any],
               let msg = ((j["choices"] as? [[String: Any]])?.first?["message"] as? [String: Any])?["content"] as? String
         else { return raw }
         let out = msg.replacingOccurrences(of: #"</?transcript>"#, with: "", options: .regularExpression)
@@ -358,6 +377,10 @@ enum Post {
             while !(await LLM.ready()) { try? await Task.sleep(for: .milliseconds(300)) }
             _ = await LLM.polish("um hello there", app: "Notes", style: store.s.style, vocabulary: store.s.words) // warm the prompt cache
             await MainActor.run { ready = true }
+            while true { // self-heal if the server goes away while idle
+                try? await Task.sleep(for: .seconds(30))
+                if await MainActor.run(body: { phase == .idle }) { await LLM.heal() }
+            }
         }
     }
 
@@ -443,6 +466,7 @@ enum Post {
     /// `OpenFlo --file speech.wav`: runs the same pipeline on a file and prints timings.
     func runFile(_ path: String) async {
         let args = CommandLine.arguments
+        LLM.port = 8180
         LLM.start()
         while !(await LLM.ready()) { try? await Task.sleep(for: .milliseconds(300)) }
         var s = store.s
