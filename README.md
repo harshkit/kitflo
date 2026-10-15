@@ -14,7 +14,7 @@ Hold <code>fn</code>, talk, let go and clean text appears in any app. Record a m
   <a href="https://github.com/harshkit/openflo/stargazers"><img src="https://img.shields.io/github/stars/harshkit/openflo?style=social" alt="GitHub stars"></a>
 </p>
 
-<p align="center"><a href="https://harshkit.github.io/openflo/">Website</a> · <a href="#install-one-line">Install</a> · <a href="#-new-meeting-notes">Meeting notes</a> · <a href="#features">Features</a> · <a href="PRIVACY.md">Privacy</a></p>
+<p align="center"><a href="https://harshkit.com/apps/openflo/">Website</a> · <a href="#install-one-line">Install</a> · <a href="#-new-meeting-notes">Meeting notes</a> · <a href="#features">Features</a> · <a href="PRIVACY.md">Privacy</a></p>
 
 ---
 
