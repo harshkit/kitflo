@@ -1,0 +1,27 @@
+name: Bug report
+description: Something in Kitflo isn't working
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Kitflo version
+      placeholder: "1.2.0"
+  - type: input
+    id: mac
+    attributes:
+      label: Mac and macOS version
+      placeholder: "MacBook Air M2, macOS 26.2"
+  - type: textarea
+    id: log
+    attributes:
+      label: Diagnostics log (optional)
+      description: Last lines of ~/Library/Logs/Kitflo.log. It contains no speech or text.
+      render: text

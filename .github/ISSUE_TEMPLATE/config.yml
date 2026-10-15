@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Support
+    url: mailto:support@harshkit.com
+    about: Questions and help with Kitflo
+  - name: Request a new app from Harshkit
+    url: https://www.harshkit.com/request/
+    about: Tell us what software you need
+  - name: Security issue
+    url: https://github.com/harshkit/kitflo/security/advisories/new
+    about: Report privately, please don't open a public issue

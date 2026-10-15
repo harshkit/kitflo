@@ -24,6 +24,9 @@ Tip: `say -o sample.wav --data-format=LEI16@16000 "um so, uh, meet at 5, no wait
 
 ## Pull requests
 
+`main` is protected: every change goes through a pull request and is reviewed and approved by the maintainer ([@harshkit](https://github.com/harshkit)) before it is merged.
+
+
 1. Open an issue first for anything bigger than a bug fix.
 2. One change per PR, with a short description of what and why.
 3. Make sure `swift build -c release` and `--selftest` pass.

@@ -1,0 +1,14 @@
+name: Feature request
+description: Suggest an idea for Kitflo
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like Kitflo to do?
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why does it matter to you?
