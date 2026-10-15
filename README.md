@@ -55,17 +55,18 @@ That installs everything: the local AI engine, the ~1 GB cleanup model and the a
 ## How it works
 
 ```
-hold fn ─► mic (16 kHz, auto gain) ─► Apple SpeechAnalyzer, streaming on the Neural Engine
+hold fn ─► mic (16 kHz, auto gain) ─► Parakeet TDT 0.6B v3 + dictionary boost, or Apple SpeechAnalyzer (Neural Engine)
 release ─► transcript ─► Qwen2.5-1.5B via llama.cpp on Metal (few-shot cleanup)
         ─► dictionary + snippets ─► pasted into the app you were typing in
 ```
 
 | Step | Engine | Measured time after release (M2) |
 |---|---|---|
-| Speech → text | Apple `SpeechAnalyzer` (on-device) | ~0.15–0.25 s |
+| Speech → text (default) | NVIDIA Parakeet TDT 0.6B v3 + CTC dictionary boost via [FluidAudio](https://github.com/FluidInference/FluidAudio), 0.57 GB one-time download | ~0.3 s (5 s clip), ~0.65 s (20 s clip) |
+| Speech → text (fallback) | Apple `SpeechAnalyzer` (on-device, no download) | ~0.1–0.2 s |
 | Cleanup | Qwen2.5-1.5B-Instruct Q4 via `llama-server` | ~0.3–0.8 s |
 
-We benchmarked Whisper large-v3-turbo too: ~2.4 s on an M2, too slow for push-to-talk.
+On test clips with names and tech words from the Dictionary (GitHub, README, Claude, Kubernetes, Razorpay…), Parakeet got 18/20 right and Apple 14/20; Apple ignores custom vocabulary. Pick the engine in Settings. We benchmarked Whisper large-v3-turbo too: ~2.4 s on an M2, too slow for push-to-talk.
 
 ## Requirements
 
@@ -109,7 +110,7 @@ swift build -c release
 ## Roadmap
 
 - [ ] Android keyboard + floating bubble
-- [ ] Stronger speech engine option with custom-vocabulary boosting
+- [x] Stronger speech engine option with custom-vocabulary boosting
 - [ ] Per-app tone
 - [ ] Signed and notarized builds
 

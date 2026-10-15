@@ -274,7 +274,7 @@ struct DictionaryPage: View {
                 ForEach(store.s.words, id: \.self) { w in
                     HStack(spacing: 6) {
                         Text(w)
-                        Button { store.s.words.removeAll { $0 == w } } label: { Image(systemName: "xmark").font(.caption2) }
+                        Button { store.s.words.removeAll { $0 == w }; Flow.shared.refresh() } label: { Image(systemName: "xmark").font(.caption2) }
                             .buttonStyle(.plain).foregroundStyle(.secondary)
                     }
                     .padding(.horizontal, 10).padding(.vertical, 6)
@@ -414,12 +414,20 @@ struct SettingsPage: View {
                         ForEach(languages, id: \.0) { Text($0.1).tag($0.0) }
                     }
                     .onChange(of: store.s.language) { Flow.shared.refresh() }
+                    Picker("Speech engine", selection: $store.s.engine) {
+                        ForEach(Engine.allCases) { Text($0.label).tag($0) }
+                    }
+                    .onChange(of: store.s.engine) { Flow.shared.refresh() }
+                    Text(store.s.engine == .parakeet
+                         ? "NVIDIA Parakeet on the Neural Engine. One-time 0.7 GB download; Apple is used until it finishes, and for Japanese, Korean and Chinese."
+                         : "No download. Often mishears names and tech words from your Dictionary.")
+                        .font(.caption).foregroundStyle(.secondary)
                     Toggle("Sound effects", isOn: $store.s.sounds)
                 }.padding(8)
             }
             GroupBox("Engine") {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Speech: Apple on-device SpeechAnalyzer (Neural Engine, live streaming)")
+                    Text(store.s.engine == .parakeet ? "Speech: NVIDIA Parakeet TDT 0.6B v3 + CTC dictionary boost (Neural Engine, FluidAudio)" : "Speech: Apple on-device SpeechAnalyzer (Neural Engine, live streaming)")
                     Text("Cleanup: Qwen2.5 1.5B Instruct (Q4, Metal via llama.cpp)")
                     Text("Models folder: ~/Library/Application Support/OpenFlo/models").foregroundStyle(.secondary)
                 }.font(.callout).frame(maxWidth: .infinity, alignment: .leading).padding(8)

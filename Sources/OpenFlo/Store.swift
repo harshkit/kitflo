@@ -35,6 +35,12 @@ enum Hotkey: String, Codable, CaseIterable, Identifiable {
     var keyCode: UInt16 { switch self { case .fn: 63; case .rightOption: 61; case .rightCommand: 54 } }
 }
 
+enum Engine: String, Codable, CaseIterable, Identifiable {
+    case apple, parakeet
+    var id: String { rawValue }
+    var label: String { self == .apple ? "Apple (built in)" : "Parakeet (more accurate, uses your Dictionary)" }
+}
+
 struct Note: Codable, Identifiable {
     var id = UUID()
     var date = Date()
@@ -52,6 +58,7 @@ struct Saved: Codable {
     var aiCleanup = true
     var language = "en-IN"
     var sounds = true
+    var engine: Engine = .parakeet
 
     init() {}
 
@@ -67,6 +74,7 @@ struct Saved: Codable {
         aiCleanup = try c.decodeIfPresent(Bool.self, forKey: .aiCleanup) ?? true
         language = try c.decodeIfPresent(String.self, forKey: .language) ?? "en-IN"
         sounds = try c.decodeIfPresent(Bool.self, forKey: .sounds) ?? true
+        engine = try c.decodeIfPresent(Engine.self, forKey: .engine) ?? .parakeet
     }
 }
 

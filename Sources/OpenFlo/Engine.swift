@@ -1,5 +1,6 @@
 import AppKit
 import AVFoundation
+import FluidAudio
 import Observation
 import Speech
 
@@ -87,11 +88,34 @@ enum LLM {
     }
 }
 
-// MARK: - Live on-device speech recognition (Apple SpeechAnalyzer, Neural Engine)
+// MARK: - Speech recognition engines
 
 /// One dictation. Audio streams in while the key is held, so text is ready almost as soon as it's released.
-final class SpeechSession {
+protocol Transcription: AnyObject {
+    var format: AVAudioFormat { get }
+    func feed(_ buffer: AVAudioPCMBuffer)
+    func finish() async throws -> String
+    func cancel() async
+}
+
+enum Transcriber {
+    /// Parakeet when chosen and loaded; Apple otherwise, including while Parakeet downloads on first use.
+    static func make(_ s: Saved) async throws -> Transcription {
+        if s.engine == .parakeet, ParakeetSession.speaks(s.language) {
+            if ParakeetSession.loaded { return try await ParakeetSession(words: s.words) }
+            Task {
+                guard (try? await ParakeetSession.asr.value) != nil else { return }
+                await MainActor.run { Flow.shared.refresh() }
+            }
+        }
+        return try await SpeechSession(locale: s.language, words: s.words)
+    }
+}
+
+/// Apple SpeechAnalyzer: zero download, streams live. Its contextualStrings boost has no visible effect.
+final class SpeechSession: Transcription {
     static var format: AVAudioFormat?
+    var format: AVAudioFormat { Self.format! }
     let input: AsyncStream<AnalyzerInput>.Continuation
     private let analyzer: SpeechAnalyzer
     private let result: Task<String, Error>
@@ -113,6 +137,8 @@ final class SpeechSession {
         try await analyzer.start(inputSequence: stream)
     }
 
+    func feed(_ buffer: AVAudioPCMBuffer) { input.yield(AnalyzerInput(buffer: buffer)) }
+
     func finish() async throws -> String {
         input.finish()
         try await analyzer.finalizeAndFinishThroughEndOfInput()
@@ -125,6 +151,55 @@ final class SpeechSession {
     }
 }
 
+/// NVIDIA Parakeet TDT 0.6B v3 on the Neural Engine (FluidAudio), with CTC keyword boosting for dictionary words.
+/// Audio is buffered while the key is held and transcribed in one pass on release.
+final class ParakeetSession: Transcription {
+    static let asr = Task { () throws -> AsrManager in
+        let m = AsrManager()
+        try await m.loadModels(AsrModels.downloadAndLoad(version: .v3))
+        loaded = true
+        return m
+    }
+    static let ctc = Task { try await CtcModels.downloadAndLoad() }
+    static var loaded = false
+    static func speaks(_ locale: String) -> Bool { ["en", "es", "fr", "de", "it", "pt"].contains(String(locale.prefix(2))) }
+
+    let format = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: 16000, channels: 1, interleaved: false)!
+    private let boost: VocabularyBoostingSession?
+    private let lock = NSLock()
+    private var samples: [Float] = []
+
+    init(words: [String]) async throws {
+        _ = try await Self.asr.value
+        let terms = words.filter { !$0.isEmpty }.map { CustomVocabularyTerm(text: $0) }
+        // Tuned on dictation clips: the acoustic "spotter rescue" swapped ordinary words in ("Kindly do" → "Claude"),
+        // and similarity 0.6 lets "Redmi" → README (0.67) through but not "roadmap" → README (0.57).
+        boost = terms.isEmpty ? nil : try? await VocabularyBoostingSession(
+            vocabulary: CustomVocabularyContext(terms: terms, minSimilarity: 0.6), ctcModels: Self.ctc.value,
+            config: VocabularyRescorer.Config(spotterRescueEnabled: false))
+    }
+
+    func feed(_ buffer: AVAudioPCMBuffer) {
+        guard let p = buffer.int16ChannelData?[0] else { return }
+        let chunk = (0..<Int(buffer.frameLength)).map { Float(p[$0]) / 32768 }
+        lock.withLock { samples += chunk }
+    }
+
+    // ponytail: one pass on release, ~0.3 s for 5 s of speech, ~0.65 s for 20 s; encode chunks while the key is held if long dictations feel slow.
+    func finish() async throws -> String {
+        let audio = lock.withLock { samples }
+        let asr = try await Self.asr.value
+        var state = TdtDecoderState.make(decoderLayers: await asr.decoderLayerCount)
+        let r = try await asr.transcribe(audio, decoderState: &state)
+        var text = r.text
+        if let boost, let timings = r.tokenTimings,
+           let out = await boost.rescore(text: text, tokenTimings: timings, audioSamples: audio) { text = out.text }
+        return text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    func cancel() async {}
+}
+
 // MARK: - Mic → analyzer format (16 kHz mono)
 
 final class Recorder {
@@ -134,7 +209,8 @@ final class Recorder {
     private var envelope: Float = 0.05
     var onLevel: ((Float) -> Void)?
 
-    func start(into session: SpeechSession, format outFmt: AVAudioFormat) throws {
+    func start(into session: Transcription) throws {
+        let outFmt = session.format
         frames = 0; peak = 0; envelope = 0.05
         let input = engine.inputNode
         let inFmt = input.outputFormat(forBus: 0)
@@ -155,7 +231,7 @@ final class Recorder {
             } else if let p = out.floatChannelData?[0] {
                 for i in 0..<n { sum += p[i] * p[i]; pk = max(pk, abs(p[i])) }
             }
-            session.input.yield(AnalyzerInput(buffer: out))
+            session.feed(out)
             let rms = sqrt(sum / Float(max(n, 1)))
             DispatchQueue.main.async {
                 self.frames += n
@@ -261,8 +337,8 @@ enum Post {
     var toast: String?
 
     private let recorder = Recorder()
-    private var next: SpeechSession?   // pre-warmed so key-down starts instantly
-    private var current: SpeechSession?
+    private var next: Transcription?   // pre-warmed so key-down starts instantly
+    private var current: Transcription?
     private var startedAt = Date()
     private var app = ""
     private var target: NSRunningApplication?
@@ -289,7 +365,7 @@ enum Post {
         let s = store.s
         Task {
             do {
-                let session = try await SpeechSession(locale: s.language, words: s.words)
+                let session = try await Transcriber.make(s)
                 await MainActor.run { next = session }
             } catch {
                 await MainActor.run { lastError = "Speech model unavailable for \(s.language)" }
@@ -307,10 +383,10 @@ enum Post {
     // Hotkey edges. Hold = push-to-talk; a quick tap locks hands-free mode until the next tap.
     func keyDown() {
         if phase == .listening && locked { locked = false; finish(); return }
-        guard phase == .idle, let session = next, let fmt = SpeechSession.format else { return }
+        guard phase == .idle, let session = next else { return }
         target = NSWorkspace.shared.frontmostApplication
         app = target?.localizedName ?? "an app"
-        do { try recorder.start(into: session, format: fmt) } catch { lastError = "Microphone unavailable"; return }
+        do { try recorder.start(into: session) } catch { lastError = "Microphone unavailable"; return }
         next = nil
         current = session
         startedAt = Date()
@@ -371,10 +447,13 @@ enum Post {
         while !(await LLM.ready()) { try? await Task.sleep(for: .milliseconds(300)) }
         var s = store.s
         if let i = args.firstIndex(of: "--words"), i + 1 < args.count { s.words = args[i + 1].components(separatedBy: ",") }
+        if let i = args.firstIndex(of: "--engine"), i + 1 < args.count, let e = Engine(rawValue: args[i + 1]) { s.engine = e }
         do {
-            let session = try await SpeechSession(locale: s.language, words: s.words)
+            if s.engine == .parakeet { _ = try await ParakeetSession.asr.value }
+            let session = try await Transcriber.make(s)
+            print("engine  \(type(of: session))")
             let file = try AVAudioFile(forReading: URL(fileURLWithPath: path))
-            let fmt = SpeechSession.format!
+            let fmt = session.format
             let conv = AVAudioConverter(from: file.processingFormat, to: fmt)!
             let inBuf = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: AVAudioFrameCount(file.length))!
             try file.read(into: inBuf)
@@ -385,7 +464,7 @@ enum Post {
                 var env: Float = 0.05
                 _ = Recorder.boost(p, Int(out.frameLength), envelope: &env)
             }
-            session.input.yield(AnalyzerInput(buffer: out))
+            session.feed(out)
             try? await Task.sleep(for: .seconds(Double(file.length) / file.processingFormat.sampleRate)) // as if spoken live
             var t = Date()
             let raw = try await session.finish()
