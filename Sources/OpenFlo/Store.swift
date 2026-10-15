@@ -41,18 +41,36 @@ enum Engine: String, Codable, CaseIterable, Identifiable {
     var label: String { self == .apple ? "Apple (built in)" : "Parakeet (more accurate, uses your Dictionary)" }
 }
 
-struct Note: Codable, Identifiable {
+enum RecordMode: String, Codable, CaseIterable, Identifiable {
+    case audio = "Audio only", screen = "Audio + Screen", camera = "Audio + Screen + Camera"
+    var id: String { rawValue }
+    var icon: String { switch self { case .audio: "mic"; case .screen: "display"; case .camera: "video" } }
+}
+
+struct Segment: Codable, Hashable {
+    var speaker: String
+    var start: Double
+    var text: String
+}
+
+struct Meeting: Codable, Identifiable {
     var id = UUID()
     var date = Date()
-    var text = ""
-    var title: String { text.split(separator: "\n").first.map(String.init) ?? "New note" }
+    var title = "Untitled recording"
+    var duration: Double = 0
+    var mode: RecordMode = .audio
+    var source = "Entire screen"
+    var segments: [Segment] = []
+    var notes = ""
+    var file: String?          // recording on disk (~/Movies/OpenFlo)
+    var status: String?        // non-nil while OpenFlo is still processing it
 }
 
 struct Saved: Codable {
     var history: [Entry] = []
     var words: [String] = []
     var snippets: [Snippet] = []
-    var notes: [Note] = []
+    var meetings: [Meeting] = []
     var style: Style = .casual
     var hotkey: Hotkey = .fn
     var aiCleanup = true
@@ -68,7 +86,7 @@ struct Saved: Codable {
         history = try c.decodeIfPresent([Entry].self, forKey: .history) ?? []
         words = try c.decodeIfPresent([String].self, forKey: .words) ?? []
         snippets = try c.decodeIfPresent([Snippet].self, forKey: .snippets) ?? []
-        notes = try c.decodeIfPresent([Note].self, forKey: .notes) ?? []
+        meetings = try c.decodeIfPresent([Meeting].self, forKey: .meetings) ?? []
         style = try c.decodeIfPresent(Style.self, forKey: .style) ?? .casual
         hotkey = try c.decodeIfPresent(Hotkey.self, forKey: .hotkey) ?? .fn
         aiCleanup = try c.decodeIfPresent(Bool.self, forKey: .aiCleanup) ?? true
@@ -81,7 +99,7 @@ struct Saved: Codable {
 @Observable final class Store {
     static let shared = Store()
     var page: Page = .home        // not saved: which screen the main window shows
-    var noteID: UUID?
+    var meetingID: UUID?
     var s = Saved() { didSet { save() } }
 
     @ObservationIgnored private let url: URL = {
@@ -92,13 +110,6 @@ struct Saved: Codable {
 
     init() {
         if let d = try? Data(contentsOf: url), let v = try? JSONDecoder().decode(Saved.self, from: d) { s = v }
-    }
-
-    func newNote() {
-        let n = Note()
-        s.notes.insert(n, at: 0)
-        noteID = n.id
-        page = .notes
     }
 
     /// True when the 🌐/fn key still triggers a macOS action on release (emoji picker, input switch),

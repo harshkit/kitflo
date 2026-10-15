@@ -35,6 +35,9 @@ struct PillView: View {
             Spacer()
             HStack(spacing: 8) {
                 switch flow.phase {
+                case .idle where MeetingRecorder.shared.recording && flow.toast == nil:
+                    Circle().fill(.red).frame(width: 7, height: 7)
+                    Text("REC").font(.system(size: 11, weight: .bold)).foregroundStyle(.white)
                 case .idle:
                     if let t = flow.toast {
                         Text(t).font(.system(size: 12, weight: .medium)).foregroundStyle(.white).lineLimit(1).fixedSize()
@@ -63,11 +66,11 @@ struct PillView: View {
         .padding(.bottom, 4)
     }
 
-    private var compact: Bool { flow.phase == .idle && flow.toast == nil }
+    private var compact: Bool { flow.phase == .idle && flow.toast == nil && !MeetingRecorder.shared.recording }
 
     private var width: CGFloat {
         switch flow.phase {
-        case .idle: 44
+        case .idle: MeetingRecorder.shared.recording ? 70 : 44
         case .listening: flow.locked ? 172 : 140
         case .thinking: 84
         }

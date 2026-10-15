@@ -8,7 +8,7 @@ enum Page: String, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .home: "house"
-        case .notes: "note.text"
+        case .notes: "record.circle"
         case .dictionary: "character.book.closed"
         case .snippets: "scissors"
         case .style: "textformat"
@@ -55,7 +55,7 @@ struct MainView: View {
                 Group {
                     switch store.page {
                     case .home: HomePage()
-                    case .notes: NotesPage()
+                    case .notes: MeetingsPage()
                     case .dictionary: DictionaryPage()
                     case .snippets: SnippetsPage()
                     case .style: StylePage()
@@ -199,65 +199,6 @@ struct Warning: View {
     }
 }
 
-// MARK: Notes
-
-struct NotesPage: View {
-    @Bindable var store = Store.shared
-    @FocusState private var editing: Bool
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .firstTextBaseline) {
-                Title(text: "Notes", sub: "Click into a note and hold fn to think out loud. Everything stays on this Mac.")
-                Spacer()
-                Button { store.newNote(); editing = true } label: { Label("New note", systemImage: "square.and.pencil") }
-            }
-            if let i = store.s.notes.firstIndex(where: { $0.id == store.noteID }) {
-                HStack {
-                    Button { store.noteID = nil } label: { Label("All notes", systemImage: "chevron.left") }.buttonStyle(.borderless)
-                    Spacer()
-                    Text(store.s.notes[i].date, format: .dateTime.day().month().hour().minute()).font(.caption).foregroundStyle(.secondary)
-                    Button {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(store.s.notes[i].text, forType: .string)
-                    } label: { Image(systemName: "doc.on.doc") }.buttonStyle(.borderless).help("Copy note")
-                    Button(role: .destructive) {
-                        store.s.notes.remove(at: i); store.noteID = nil
-                    } label: { Image(systemName: "trash") }.buttonStyle(.borderless).help("Delete note")
-                }
-                TextEditor(text: $store.s.notes[i].text)
-                    .font(.system(size: 15, design: .serif))
-                    .scrollContentBackground(.hidden)
-                    .padding(12)
-                    .frame(minHeight: 380)
-                    .background(RoundedRectangle(cornerRadius: 12).fill(Color.paper))
-                    .focused($editing)
-            } else if store.s.notes.isEmpty {
-                Text("No notes yet. Press New note, then hold fn and speak.").foregroundStyle(.secondary).padding(.vertical, 30)
-            } else {
-                LazyVStack(spacing: 0) {
-                    ForEach(store.s.notes) { n in
-                        Button { store.noteID = n.id; editing = true } label: {
-                            HStack(alignment: .top) {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(n.title.isEmpty ? "New note" : n.title).fontWeight(.medium).lineLimit(1)
-                                    Text(n.text.split(separator: "\n").dropFirst().joined(separator: " "))
-                                        .font(.callout).foregroundStyle(.secondary).lineLimit(2)
-                                }
-                                Spacer()
-                                Text(n.date, format: .dateTime.day().month()).font(.caption).foregroundStyle(.secondary)
-                            }
-                            .padding(.vertical, 12).contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        Divider()
-                    }
-                }
-            }
-        }
-    }
-}
-
 // MARK: Dictionary
 
 struct DictionaryPage: View {
@@ -384,6 +325,7 @@ struct SettingsPage: View {
     @Bindable var store = Store.shared
     @State private var axTrusted = AXIsProcessTrusted()
     @State private var micOK = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
+    @State private var screenOK = CGPreflightScreenCaptureAccess()
     private let languages = [("en-IN", "English (India)"), ("en-US", "English (US)"), ("en-GB", "English (UK)"), ("en-AU", "English (Australia)"),
                              ("es-ES", "Spanish"), ("fr-FR", "French"), ("de-DE", "German"), ("it-IT", "Italian"), ("pt-BR", "Portuguese"),
                              ("ja-JP", "Japanese"), ("ko-KR", "Korean"), ("zh-CN", "Chinese")]
@@ -398,6 +340,9 @@ struct SettingsPage: View {
                     }
                     perm("Accessibility (to read the key and paste)", ok: axTrusted) {
                         NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+                    }
+                    perm("Screen Recording (only for meeting notes)", ok: screenOK) {
+                        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
                     }
                 }.padding(8)
             }
@@ -440,6 +385,7 @@ struct SettingsPage: View {
         .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
             axTrusted = AXIsProcessTrusted()
             micOK = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
+            screenOK = CGPreflightScreenCaptureAccess()
         }
     }
 

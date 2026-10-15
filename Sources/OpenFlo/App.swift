@@ -7,6 +7,10 @@ enum Main {
     static func main() {
         let args = CommandLine.arguments
         if args.contains("--selftest") { Post.selfTest(); return }
+        if let i = args.firstIndex(of: "--meeting"), i + 2 < args.count {
+            Task { await MeetingNotes.cli(args[i + 1], args[i + 2]); exit(0) }
+            RunLoop.main.run()
+        }
         if let i = args.firstIndex(of: "--file"), i + 1 < args.count {
             Task { await Flow.shared.runFile(args[i + 1]); exit(0) }
             RunLoop.main.run()
@@ -31,7 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         status.button?.image = NSImage(systemSymbolName: "waveform", accessibilityDescription: "OpenFlo")
         let menu = NSMenu()
         menu.addItem(withTitle: "Open OpenFlo", action: #selector(openWindow), keyEquivalent: "o")
-        menu.addItem(withTitle: "New Note", action: #selector(newNote), keyEquivalent: "n")
+        menu.addItem(withTitle: "Record Meeting Notes", action: #selector(newNote), keyEquivalent: "n")
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit OpenFlo", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         status.menu = menu
@@ -91,7 +95,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func newNote() {
-        Store.shared.newNote()
+        Store.shared.meetingID = nil
+        Store.shared.page = .notes
         openWindow()
     }
 
