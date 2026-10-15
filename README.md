@@ -2,6 +2,8 @@
 
 <h1 align="center">Kitflo</h1>
 
+<p align="center"><sub>by <a href="https://www.harshkit.com/">Harshkit</a> · formerly OpenFlo</sub></p>
+
 <p align="center"><b>Free, open-source, offline voice dictation and meeting notes for Mac.</b><br>
 Hold <code>fn</code>, talk, let go and clean text appears in any app. Record a meeting and get who-said-what plus AI notes.<br>100% on-device: no cloud, no account, no subscription.</p>
 
