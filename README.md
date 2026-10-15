@@ -2,8 +2,8 @@
 
 <h1 align="center">OpenFlo</h1>
 
-<p align="center"><b>Free, open-source, offline voice dictation for Mac.</b><br>
-Hold <code>fn</code>, talk, let go and clean, punctuated text appears in any app. 100% on-device: no cloud, no account, no subscription.</p>
+<p align="center"><b>Free, open-source, offline voice dictation and meeting notes for Mac.</b><br>
+Hold <code>fn</code>, talk, let go and clean text appears in any app. Record a meeting and get who-said-what plus AI notes.<br>100% on-device: no cloud, no account, no subscription.</p>
 
 <p align="center">
   <a href="https://github.com/harshkit/openflo/releases/latest"><img src="https://img.shields.io/github/v/release/harshkit/openflo?label=download&color=ff9e52" alt="Latest release"></a>
@@ -14,11 +14,11 @@ Hold <code>fn</code>, talk, let go and clean, punctuated text appears in any app
   <a href="https://github.com/harshkit/openflo/stargazers"><img src="https://img.shields.io/github/stars/harshkit/openflo?style=social" alt="GitHub stars"></a>
 </p>
 
-<p align="center"><a href="https://harshkit.github.io/openflo/">Website</a> · <a href="#install-one-line">Install</a> · <a href="#features">Features</a> · <a href="PRIVACY.md">Privacy</a></p>
+<p align="center"><a href="https://harshkit.github.io/openflo/">Website</a> · <a href="#install-one-line">Install</a> · <a href="#-new-meeting-notes">Meeting notes</a> · <a href="#features">Features</a> · <a href="PRIVACY.md">Privacy</a></p>
 
 ---
 
-OpenFlo is a **free, private alternative to paid AI dictation apps** like Wispr Flow, Superwhisper and Aqua Voice. It turns rambling speech into clean writing: it removes "um" and "uh", applies your self-corrections and fixes punctuation, and does it in **under a second** without anything leaving your Mac.
+OpenFlo is a **free, private alternative to paid AI dictation and meeting-note apps** like Wispr Flow, Superwhisper, Otter and Granola. It turns rambling speech into clean writing in **under a second**, and turns meetings into a who-said-what transcript plus notes, without anything leaving your Mac.
 
 ## Install (one line)
 
@@ -28,12 +28,28 @@ curl -fsSL https://raw.githubusercontent.com/harshkit/openflo/main/install.sh | 
 
 That installs everything: the local AI engine, the ~1 GB cleanup model and the app. The ~0.57 GB speech model downloads the first time you dictate. Then allow **Microphone** and **Accessibility** when asked, and set **System Settings → Keyboard → "Press 🌐 key to" → Do Nothing**.
 
+## 🆕 Meeting notes
+
+Record a meeting, call, demo or anything on screen. OpenFlo works out **who said what** and writes the notes for you, on your Mac.
+
+| | |
+|---|---|
+| 🎙️🖥️🎥 **Three modes** | Audio only · Audio + Screen · Audio + Screen + Camera (a draggable camera bubble recorded with the screen) |
+| 🎯 **Record anything** | The whole screen, **one app** (e.g. only Zoom, with only its audio) or **one window** (e.g. the browser window with your meeting tab), picked with macOS's own picker |
+| 🔀 **Two audio tracks** | Your mic and the system audio are captured separately, so **You** vs everyone else is always right; other people are told apart as Speaker 1, 2, 3… |
+| ⏯️ **Floating recording bar** | Timer, **pause/resume**, **mic** and **camera** on/off, stop. Paused parts are cut out of the video |
+| 👀 **Reads your screen** | Text on screen is read on-device every few seconds, so notes cover what you **showed**, not just what you said |
+| 📝 **AI notes** | Title, summary, key points, **action items with owners** and decisions, plus the full timestamped transcript |
+| 📁 **Your files** | Video or audio saved to `~/Movies/OpenFlo` (changeable). Copy notes anywhere with one click |
+
+Meeting notes need **Screen Recording** permission (for system audio and video): **Notes tab → Allow Screen Recording**, turn OpenFlo on, then **Restart OpenFlo**.
+
 ## Features
 
 - 🎙️ **Hold `fn` to talk, release to paste** into any app: Slack, Gmail, Notion, VS Code, ChatGPT, anything with a text box. **Tap `fn`** for hands-free mode.
 - ⚡ **Fast**: speech streams into the recognizer while you talk, so text appears **~0.6–1.0 s** after you let go (measured on an M2).
 - ✨ **AI cleanup, fully local**: removes filler words and stutters, keeps only your final version ("at 5, no wait, 6" → "at 6"), adds punctuation and turns spoken lists into numbered lists. It cleans up your questions; it never answers them.
-- 🗒️ **Meeting notes**: record a call or meeting (**audio only**, **audio + screen**, or **audio + screen + camera**) from the whole screen, one app (e.g. Zoom) or one window, picked with macOS's own screen/app/window picker. A floating bar shows the timer with **pause/resume**, **mic** and **camera** toggles and **stop**; paused parts are cut from the video. OpenFlo labels who said what (You, Speaker 1, Speaker 2…), reads the text on screen, and writes a summary, key points, action items and decisions, all on your Mac. Recordings go to `~/Movies/OpenFlo` (changeable).
+- 🗒️ **Meeting notes**: record audio, screen or camera and get who-said-what plus AI notes. See [Meeting notes](#-new-meeting-notes).
 - 📖 **Dictionary**: names, brands and jargon spelled your way.
 - ✂️ **Snippets**: say "my calendar link" and get your full URL.
 - 🎨 **Styles**: Formal, Casual or Very casual.
@@ -51,6 +67,7 @@ That installs everything: the local AI engine, the ~1 GB cleanup model and the a
 | Works offline | **Yes** | No |
 | Account required | **No** | Yes |
 | Open source | **Yes (MIT)** | No |
+| Meeting notes with video | **Included, on-device** | Separate paid app |
 
 ## How it works
 
