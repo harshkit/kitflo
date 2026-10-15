@@ -9,75 +9,359 @@
 <link rel="canonical" href="https://harshkit.github.io/openflo/">
 <meta property="og:title" content="OpenFlo: Free Offline Voice Dictation for Mac">
 <meta property="og:description" content="Hold fn, talk, get clean text in any app. Runs 100% on your Mac. Free and open source.">
-<meta property="og:image" content="https://raw.githubusercontent.com/harshkit/openflo/main/assets/icon.png">
+<meta property="og:image" content="https://harshkit.github.io/openflo/icon.png">
 <meta property="og:url" content="https://harshkit.github.io/openflo/">
 <meta name="twitter:card" content="summary">
-<link rel="icon" href="https://raw.githubusercontent.com/harshkit/openflo/main/assets/icon.png">
+<meta name="theme-color" content="#0b0a09">
+<link rel="icon" href="icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"SoftwareApplication","name":"OpenFlo","operatingSystem":"macOS 26+","applicationCategory":"ProductivityApplication","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Free, open-source, offline voice dictation for Mac with local AI cleanup.","url":"https://harshkit.github.io/openflo/","downloadUrl":"https://github.com/harshkit/openflo/releases/latest","license":"https://opensource.org/licenses/MIT","author":{"@type":"Person","name":"Harsh Sharma","url":"https://github.com/harshkit"}}
 </script>
 <style>
-  :root { --bg:#f9f6f1; --card:#fff; --ink:#1c1a18; --muted:#6b655e; --accent:#ff9e52; --line:#e8e2d9; }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#1c1a19; --card:#262422; --ink:#f3efe9; --muted:#a39c93; --line:#36322e; } }
-  * { box-sizing:border-box }
-  body { margin:0; background:var(--bg); color:var(--ink); font:17px/1.6 -apple-system,BlinkMacSystemFont,"Inter",sans-serif; }
-  main { max-width:880px; margin:0 auto; padding:56px 16px 80px; }
-  h1,h2 { font-family:"New York",Georgia,serif; font-weight:400; letter-spacing:-.01em }
-  h1 { font-size:clamp(36px,7vw,60px); line-height:1.05; margin:20px 0 14px }
-  h2 { font-size:28px; margin:56px 0 12px }
-  .lead { font-size:20px; color:var(--muted); max-width:640px }
-  .icon { width:96px; height:96px }
-  pre { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; overflow-x:auto; font-size:14px }
-  .btns { display:flex; gap:12px; flex-wrap:wrap; margin:24px 0 }
-  .btn { display:inline-block; padding:12px 20px; border-radius:999px; text-decoration:none; font-weight:600; border:1px solid var(--line); color:var(--ink); background:var(--card) }
-  .btn.primary { background:var(--ink); color:var(--bg); border-color:var(--ink) }
-  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px }
-  .card b { display:block; margin-bottom:4px }
-  .card span { color:var(--muted); font-size:15px }
-  table { width:100%; border-collapse:collapse; background:var(--card); border-radius:12px; overflow:hidden }
-  td,th { padding:12px 14px; border-bottom:1px solid var(--line); text-align:left; font-size:15px }
-  footer { margin-top:64px; color:var(--muted); font-size:14px }
-  a { color:inherit }
+  :root {
+    --bg: #0b0a09; --bg2: #13110f; --ink: #f4efe7; --muted: #9b948a; --line: rgba(255,255,255,.09);
+    --glass: rgba(255,255,255,.04); --accent: #ff9e52; --accent2: #ffd9a8; --glow: rgba(255,140,60,.35);
+    --serif: "Instrument Serif", "New York", Georgia, serif; --sans: "Inter", -apple-system, sans-serif; --mono: "JetBrains Mono", ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--bg); color: var(--ink); font: 17px/1.6 var(--sans); overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  ::selection { background: var(--accent); color: #000; }
+
+  /* film grain + ambient glow */
+  body::before { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 50; opacity: .06;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+  .orb { position: fixed; width: 70vmax; height: 70vmax; border-radius: 50%; filter: blur(90px); opacity: .5; pointer-events: none; z-index: -1;
+    background: radial-gradient(circle, var(--glow), transparent 60%); left: 50%; top: -35vmax; transform: translateX(-50%); }
+
+  /* nav */
+  nav { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 40; display: flex; align-items: center; gap: 22px;
+    padding: 8px 8px 8px 16px; border-radius: 999px; border: 1px solid var(--line); background: rgba(20,18,16,.6); backdrop-filter: blur(16px);
+    font-size: 14px; white-space: nowrap; }
+  nav .brand { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+  nav .brand img { width: 22px; height: 22px; border-radius: 6px; }
+  nav .links a { color: var(--muted); margin-right: 18px; transition: color .2s; }
+  nav .links a:hover { color: var(--ink); }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 999px; font-weight: 600; font-size: 15px;
+    border: 1px solid var(--line); background: var(--glass); transition: transform .2s cubic-bezier(.2,.8,.2,1), background .2s, box-shadow .2s; }
+  .btn:hover { transform: translateY(-1px); background: rgba(255,255,255,.08); }
+  .btn.primary { background: var(--ink); color: #0b0a09; border-color: transparent; box-shadow: 0 0 0 0 var(--glow); }
+  .btn.primary:hover { box-shadow: 0 8px 40px -6px var(--glow); }
+  nav .btn { padding: 8px 14px; font-size: 14px; }
+
+  section { padding: 120px 16px; position: relative; }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+  .eyebrow { font: 500 12px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+  h1, h2 { font-family: var(--serif); font-weight: 400; letter-spacing: -.02em; line-height: .98; }
+  h1 { font-size: clamp(52px, 10vw, 128px); }
+  h2 { font-size: clamp(40px, 6.5vw, 80px); }
+  h1 em, h2 em { font-style: italic; background: linear-gradient(100deg, var(--accent2), var(--accent) 60%); -webkit-background-clip: text; background-clip: text; color: transparent; padding-right: .06em; }
+  .lead { color: var(--muted); font-size: clamp(17px, 2vw, 21px); max-width: 600px; }
+
+  /* hero */
+  .hero { min-height: 100svh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding-top: 140px; }
+  .hero .lead { margin: 26px auto 34px; }
+  .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .meta { margin-top: 18px; color: var(--muted); font: 13px var(--mono); }
+
+  /* live demo window */
+  .demo { margin: 72px auto 0; width: min(760px, 100%); border-radius: 22px; border: 1px solid var(--line);
+    background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.015)); box-shadow: 0 40px 120px -40px var(--glow), inset 0 1px 0 rgba(255,255,255,.06);
+    text-align: left; overflow: hidden; }
+  .demo .bar { display: flex; gap: 7px; padding: 14px 16px; border-bottom: 1px solid var(--line); align-items: center; }
+  .demo .bar i { width: 11px; height: 11px; border-radius: 50%; background: #3a3632; }
+  .demo .bar span { margin-left: 10px; color: var(--muted); font: 12px var(--mono); }
+  .demo .body { padding: 28px 28px 92px; min-height: 230px; position: relative; font-size: clamp(16px, 2.2vw, 20px); }
+  .demo .raw { color: var(--muted); font-family: var(--mono); font-size: .82em; min-height: 3.2em; }
+  .demo .raw s { color: #6a635b; text-decoration-color: var(--accent); }
+  .demo .clean { margin-top: 16px; font-family: var(--serif); font-size: 1.45em; line-height: 1.25; min-height: 2.6em; opacity: 0; transform: translateY(8px); filter: blur(6px);
+    transition: opacity .6s, transform .6s cubic-bezier(.2,.8,.2,1), filter .6s; }
+  .demo .clean.on { opacity: 1; transform: none; filter: none; }
+  .demo .clean::after { content: "▍"; color: var(--accent); animation: blink 1s steps(1) infinite; margin-left: 2px; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .pill { position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); height: 36px; border-radius: 999px; background: #000;
+    border: 1px solid rgba(255,255,255,.14); display: flex; align-items: center; justify-content: center; gap: 3px; padding: 0 16px;
+    width: 46px; transition: width .45s cubic-bezier(.2,.8,.2,1); }
+  .pill.listen { width: 150px; } .pill.think { width: 86px; }
+  .pill b { width: 3px; height: 4px; border-radius: 3px; background: #fff; transition: height .08s; display: none; }
+  .pill.listen b { display: block; }
+  .pill .dots { display: none; gap: 5px; } .pill.think .dots { display: flex; }
+  .pill .dots u { width: 5px; height: 5px; border-radius: 50%; background: #fff; animation: pulse 1s infinite; }
+  .pill .dots u:nth-child(2) { animation-delay: .15s; } .pill .dots u:nth-child(3) { animation-delay: .3s; }
+  @keyframes pulse { 50% { opacity: .25; } }
+  .key { position: absolute; right: 22px; bottom: 26px; font: 12px var(--mono); color: var(--muted); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; transition: all .2s; }
+  .key.down { color: #000; background: var(--accent); border-color: var(--accent); transform: translateY(1px); }
+
+  /* endless marquees */
+  .marquee { overflow: hidden; padding: 26px 0; border-block: 1px solid var(--line); -webkit-mask: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); mask: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); }
+  .track { display: flex; gap: 56px; width: max-content; animation: slide 40s linear infinite; }
+  .marquee.rev .track { animation-direction: reverse; animation-duration: 55s; }
+  .marquee:hover .track { animation-play-state: paused; }
+  @keyframes slide { to { transform: translateX(-50%); } }
+  .track span { font: 400 clamp(26px, 4vw, 42px)/1 var(--serif); color: #5f5952; white-space: nowrap; transition: color .3s; }
+  .track span:hover { color: var(--ink); }
+  .track span i { font-style: normal; color: var(--accent); margin-left: 56px; }
+  .chips .track { gap: 14px; }
+  .chip { font: 14px var(--mono); padding: 12px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--glass); white-space: nowrap; color: var(--muted); }
+  .chip s { color: #6a635b; text-decoration-color: var(--accent); }
+  .chip b { color: var(--ink); font-weight: 500; }
+
+  /* scroll-scrubbed manifesto */
+  .manifesto p { font: 400 clamp(32px, 5.4vw, 64px)/1.12 var(--serif); letter-spacing: -.015em; }
+  .manifesto .w { color: #3a3631; transition: color .25s; }
+  .manifesto .w.lit { color: var(--ink); }
+  .manifesto .w.hl.lit { color: var(--accent); font-style: italic; }
+
+  /* features */
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin-top: 54px; }
+  .card { position: relative; border: 1px solid var(--line); border-radius: 20px; padding: 26px; background: var(--glass); overflow: hidden; min-height: 210px;
+    transition: border-color .3s, transform .3s cubic-bezier(.2,.8,.2,1); }
+  .card:hover { border-color: rgba(255,158,82,.35); transform: translateY(-3px); }
+  .card::before { content: ""; position: absolute; inset: 0; background: radial-gradient(400px circle at var(--x, 50%) var(--y, 0%), rgba(255,158,82,.12), transparent 40%); opacity: 0; transition: opacity .3s; }
+  .card:hover::before { opacity: 1; }
+  .card .ico { font-size: 26px; }
+  .card h3 { font: 400 28px/1.1 var(--serif); margin: 16px 0 8px; }
+  .card p { color: var(--muted); font-size: 15px; }
+
+  /* stats */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 22px; overflow: hidden; margin-top: 54px; }
+  .stat { background: var(--bg); padding: 36px 26px; }
+  .stat b { display: block; font: 400 clamp(56px, 8vw, 88px)/1 var(--serif); background: linear-gradient(180deg, var(--ink), #8a8178); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .stat > span { color: var(--muted); font-size: 15px; }
+
+  /* compare */
+  table { width: 100%; border-collapse: collapse; margin-top: 44px; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
+  td, th { padding: 18px 20px; border-bottom: 1px solid var(--line); text-align: left; font-size: 16px; }
+  th { font: 500 12px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  td:nth-child(2) { color: var(--ink); font-weight: 600; background: rgba(255,158,82,.06); }
+  td:nth-child(3) { color: var(--muted); }
+
+  /* install */
+  .install { text-align: center; }
+  .term { margin: 40px auto 0; max-width: 820px; text-align: left; border: 1px solid var(--line); border-radius: 16px; background: #070606; overflow: hidden; }
+  .term .bar { padding: 12px 16px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; color: var(--muted); font: 12px var(--mono); }
+  .term button { font: 12px var(--mono); color: var(--ink); background: var(--glass); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+  .term pre { padding: 20px; overflow-x: auto; font: 14px/1.6 var(--mono); color: var(--accent2); }
+  .term pre::before { content: "$ "; color: var(--muted); }
+
+  footer { padding: 60px 16px 80px; text-align: center; color: var(--muted); font-size: 14px; border-top: 1px solid var(--line); }
+  footer .big { font: 400 clamp(64px, 16vw, 220px)/.9 var(--serif); letter-spacing: -.04em; color: #1d1a17; margin-bottom: 24px; user-select: none; }
+  footer a { text-decoration: underline; text-underline-offset: 3px; }
+
+  /* reveal on scroll */
+  .reveal { opacity: 0; transform: translateY(28px); filter: blur(8px); transition: opacity .9s, transform .9s cubic-bezier(.2,.8,.2,1), filter .9s; }
+  .reveal.in { opacity: 1; transform: none; filter: none; }
+  .grid .reveal:nth-child(2) { transition-delay: .08s; } .grid .reveal:nth-child(3) { transition-delay: .16s; }
+  .grid .reveal:nth-child(5) { transition-delay: .08s; } .grid .reveal:nth-child(6) { transition-delay: .16s; }
+
+  @media (max-width: 720px) {
+    nav .links { display: none; }
+    section { padding: 88px 16px; }
+    .demo .body { padding: 22px 18px 88px; }
+    .key { display: none; }
+    td, th { padding: 14px 12px; font-size: 14px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before { animation: none !important; transition: none !important; }
+    .reveal { opacity: 1; transform: none; filter: none; }
+    .manifesto .w { color: var(--ink); }
+  }
 </style>
 </head>
 <body>
-<main>
-  <img class="icon" src="https://raw.githubusercontent.com/harshkit/openflo/main/assets/icon.png" alt="OpenFlo app icon">
-  <h1>Talk. It types.<br>Nothing leaves your Mac.</h1>
-  <p class="lead">OpenFlo is free, open-source voice dictation for macOS. Hold <b>fn</b>, speak naturally and get clean, punctuated text in any app, in under a second, fully offline.</p>
-  <div class="btns">
-    <a class="btn primary" href="#install">Install free</a>
-    <a class="btn" href="https://github.com/harshkit/openflo">★ Star on GitHub</a>
+<div class="orb" aria-hidden="true"></div>
+
+<nav aria-label="Main">
+  <a class="brand" href="#top"><img src="icon.png" alt="">OpenFlo</a>
+  <span class="links"><a href="#features">Features</a><a href="#privacy">Privacy</a><a href="https://github.com/harshkit/openflo">GitHub</a></span>
+  <a class="btn primary" href="#install">Get it free</a>
+</nav>
+
+<main id="top">
+  <section class="hero">
+    <div class="eyebrow reveal">Free · Open source · 100% offline</div>
+    <h1 class="reveal" style="margin-top:22px">Don't type.<br><em>Just flow.</em></h1>
+    <p class="lead reveal">Hold <b>fn</b>, say it however it comes out, let go. OpenFlo turns your rambling into clean, punctuated writing in any Mac app, in under a second, without your voice ever leaving your laptop.</p>
+    <div class="cta reveal">
+      <a class="btn primary" href="#install">Install in one line →</a>
+      <a class="btn" href="https://github.com/harshkit/openflo">★ Star on GitHub</a>
+    </div>
+    <div class="meta reveal">macOS 26+ · Apple Silicon · MIT license</div>
+
+    <div class="demo reveal" aria-label="Animated demo: messy speech becomes clean text">
+      <div class="bar"><i></i><i></i><i></i><span id="app">Slack · #launch</span></div>
+      <div class="body">
+        <div class="raw" id="raw"></div>
+        <div class="clean" id="clean"></div>
+        <div class="pill" id="pill"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><span class="dots"><u></u><u></u><u></u></span></div>
+        <div class="key" id="key">hold fn</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="marquee" aria-label="Works in every app">
+    <div class="track" id="apps"></div>
   </div>
 
-  <h2 id="install">Install in one line</h2>
-  <pre><code>curl -fsSL https://raw.githubusercontent.com/harshkit/openflo/main/install.sh | bash</code></pre>
-  <p style="color:var(--muted)">Requires macOS 26 or newer on Apple Silicon. Installs the local AI engine, a ~1 GB model and the app.</p>
+  <section class="manifesto">
+    <div class="wrap">
+      <div class="eyebrow" style="margin-bottom:28px">Why OpenFlo</div>
+      <p id="manifesto">You think at 150 words a minute but type at 40. Your ideas deserve better than a keyboard, and your voice deserves better than someone else's server. OpenFlo listens, understands and writes, entirely on your Mac.</p>
+    </div>
+  </section>
 
-  <h2>What it does</h2>
-  <div class="grid">
-    <div class="card"><b>Hold fn, speak, release</b><span>Text lands in Slack, Gmail, Notion, VS Code or any text box.</span></div>
-    <div class="card"><b>Cleans up your speech</b><span>Removes ums and stutters, applies "no wait, I mean…" corrections and fixes punctuation.</span></div>
-    <div class="card"><b>Under a second</b><span>Streaming on-device recognition plus a small local LLM on Metal.</span></div>
-    <div class="card"><b>Private by design</b><span>No account, no telemetry, no servers. Audio is never saved.</span></div>
-    <div class="card"><b>Notes, Dictionary, Snippets</b><span>Think out loud, keep names spelled right, expand shortcuts.</span></div>
-    <div class="card"><b>12 languages</b><span>Including Indian, US, UK and Australian English.</span></div>
+  <div class="marquee chips rev" aria-label="Examples of speech cleanup">
+    <div class="track" id="chips"></div>
   </div>
 
-  <h2>Free vs. paid dictation apps</h2>
-  <table>
-    <tr><th></th><th>OpenFlo</th><th>Typical cloud app</th></tr>
-    <tr><td>Price</td><td><b>Free</b></td><td>$12–15/month</td></tr>
-    <tr><td>Your voice</td><td><b>Stays on your Mac</b></td><td>Uploaded to servers</td></tr>
-    <tr><td>Offline</td><td><b>Yes</b></td><td>No</td></tr>
-    <tr><td>Open source</td><td><b>MIT</b></td><td>No</td></tr>
-  </table>
+  <section id="features">
+    <div class="wrap">
+      <div class="eyebrow reveal">Features</div>
+      <h2 class="reveal" style="margin-top:18px">Speak messy.<br><em>Send polished.</em></h2>
+      <div class="grid">
+        <div class="card reveal"><div class="ico">⚡</div><h3>Under a second</h3><p>Speech streams to Apple's on-device recognizer while you talk, then a local AI tidies it up. Text lands ~0.6–1.0 s after you let go.</p></div>
+        <div class="card reveal"><div class="ico">✨</div><h3>Understands corrections</h3><p>"Meet at 5, no wait, 6" becomes "Meet at 6." Ums, stutters and false starts disappear, and spoken lists become numbered lists.</p></div>
+        <div class="card reveal"><div class="ico">🌐</div><h3>Every app</h3><p>Slack, Gmail, Notion, VS Code, ChatGPT, Messages. If it has a text box, OpenFlo types into it.</p></div>
+        <div class="card reveal"><div class="ico">🗒️</div><h3>Notes</h3><p>A scratchpad for thinking out loud. Capture ideas hands-free and copy them anywhere.</p></div>
+        <div class="card reveal"><div class="ico">📖</div><h3>Dictionary &amp; snippets</h3><p>Your names and jargon spelled your way. Say "my calendar link" and get your full URL.</p></div>
+        <div class="card reveal"><div class="ico">🔉</div><h3>Whisper-quiet</h3><p>Automatic gain picks up soft or distant speech, so you can dictate in a quiet office.</p></div>
+      </div>
+    </div>
+  </section>
 
-  <footer>
-    Made by <a href="https://github.com/harshkit">Harsh Sharma</a> · <a href="https://github.com/harshkit/openflo/blob/main/PRIVACY.md">Privacy</a> · <a href="https://github.com/harshkit/openflo/blob/main/LICENSE">MIT License</a><br>
-    OpenFlo is an independent project, not affiliated with any other dictation app.
-  </footer>
+  <section id="privacy">
+    <div class="wrap">
+      <div class="eyebrow reveal">Private by design</div>
+      <h2 class="reveal" style="margin-top:18px">Your voice<br><em>stays home.</em></h2>
+      <div class="stats">
+        <div class="stat reveal"><b data-count="0">0</b><span>bytes of audio uploaded. Ever.</span></div>
+        <div class="stat reveal"><b>$<span data-count="0">0</span></b><span>per month, forever. No account needed.</span></div>
+        <div class="stat reveal"><b><span data-count="0.2" data-dec="1">0</span>s</b><span>speech ready after you let go (M2)</span></div>
+        <div class="stat reveal"><b data-count="12">0</b><span>languages, including Indian English</span></div>
+      </div>
+      <table class="reveal" aria-label="OpenFlo compared with cloud dictation apps">
+        <tr><th></th><th>OpenFlo</th><th>Cloud dictation</th></tr>
+        <tr><td>Price</td><td>Free</td><td>$12–15 / month</td></tr>
+        <tr><td>Your voice</td><td>Stays on your Mac</td><td>Uploaded to servers</td></tr>
+        <tr><td>Works offline</td><td>Yes</td><td>No</td></tr>
+        <tr><td>Account</td><td>None</td><td>Required</td></tr>
+        <tr><td>Source code</td><td>Open (MIT)</td><td>Closed</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section class="install" id="install">
+    <div class="wrap">
+      <div class="eyebrow reveal">Install</div>
+      <h2 class="reveal" style="margin-top:18px">One line.<br><em>Then just talk.</em></h2>
+      <div class="term reveal">
+        <div class="bar"><span>Terminal</span><button id="copy" type="button">Copy</button></div>
+        <pre id="cmd">curl -fsSL https://raw.githubusercontent.com/harshkit/openflo/main/install.sh | bash</pre>
+      </div>
+      <p class="lead reveal" style="margin:26px auto 0">Installs the local AI engine, a ~1 GB model and the app. Allow Microphone and Accessibility, set the 🌐 key to "Do Nothing", and hold fn anywhere.</p>
+    </div>
+  </section>
 </main>
+
+<footer>
+  <div class="big" aria-hidden="true">OpenFlo</div>
+  Made by <a href="https://github.com/harshkit">Harsh Sharma</a> · <a href="https://github.com/harshkit/openflo">GitHub</a> · <a href="https://github.com/harshkit/openflo/blob/main/PRIVACY.md">Privacy</a> · <a href="https://github.com/harshkit/openflo/blob/main/LICENSE">MIT License</a><br><br>
+  OpenFlo is an independent project, not affiliated with any other dictation app.
+</footer>
+
+<script>
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// Endless marquees: content is duplicated so translateX(-50%) loops seamlessly.
+const apps = ['Slack','Gmail','Notion','VS Code','ChatGPT','Messages','Linear','Figma','Google Docs','WhatsApp','Cursor','Obsidian','LinkedIn','Outlook'];
+document.getElementById('apps').innerHTML = [...apps, ...apps].map(a => `<span>${a}<i>✦</i></span>`).join('');
+const pairs = [
+  ['um so can you send the the deck by friday', 'Can you send the deck by Friday?'],
+  ['meet at 5 no wait 6', 'Meet at 6.'],
+  ['uh first fix login second update pricing', '1. Fix login 2. Update pricing'],
+  ['the budget is 10k actually make that 12k', 'The budget is 12k.'],
+  ['i mean like it looks really good you know', 'It looks really good.'],
+  ['send it to mark no i mean sarah', 'Send it to Sarah.'],
+];
+document.getElementById('chips').innerHTML = [...pairs, ...pairs]
+  .map(([a, b]) => `<span class="chip"><s>${a}</s> → <b>${b}</b></span>`).join('');
+
+// Reveal on scroll.
+const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: .15 });
+document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+// Manifesto: words light up as you scroll through it.
+const m = document.getElementById('manifesto');
+const hl = new Set(['150', 'voice', 'Mac.', 'entirely']);
+m.innerHTML = m.textContent.split(' ').map(w => `<span class="w${hl.has(w) ? ' hl' : ''}">${w}</span>`).join(' ');
+const words = [...m.querySelectorAll('.w')];
+function scrub() {
+  const r = m.getBoundingClientRect(), vh = innerHeight;
+  const p = Math.min(1, Math.max(0, (vh * .85 - r.top) / (r.height + vh * .35)));
+  const n = Math.round(p * words.length);
+  words.forEach((w, i) => w.classList.toggle('lit', i < n));
+}
+if (!reduce) { addEventListener('scroll', scrub, { passive: true }); scrub(); }
+
+// Count-up stats.
+const cio = new IntersectionObserver(es => es.forEach(e => {
+  if (!e.isIntersecting) return;
+  const el = e.target, to = parseFloat(el.dataset.count), dec = +el.dataset.dec || 0, t0 = performance.now();
+  const step = t => { const k = Math.min(1, (t - t0) / 1200), v = to * (1 - Math.pow(1 - k, 3)); el.textContent = v.toFixed(dec); if (k < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step); cio.unobserve(el);
+}), { threshold: .6 });
+document.querySelectorAll('[data-count]').forEach(el => cio.observe(el));
+
+// Spotlight that follows the cursor on feature cards.
+document.querySelectorAll('.card').forEach(c => c.addEventListener('pointermove', e => {
+  const r = c.getBoundingClientRect();
+  c.style.setProperty('--x', (e.clientX - r.left) + 'px'); c.style.setProperty('--y', (e.clientY - r.top) + 'px');
+}));
+
+// Copy install command.
+document.getElementById('copy').onclick = async e => {
+  try { await navigator.clipboard.writeText(document.getElementById('cmd').textContent); e.target.textContent = 'Copied ✓'; }
+  catch { e.target.textContent = 'Select & copy'; }
+  setTimeout(() => e.target.textContent = 'Copy', 1800);
+};
+
+// Hero demo loop: hold fn → messy words stream in → think → clean text appears.
+const scenes = [
+  { app: 'Slack · #launch', raw: ['um', 'so', 'I', 'think', 'we', 'should', 'uh', 'ship', 'it', 'on', 'thursday', 'no', 'wait', 'friday', 'after', 'the', 'the', 'demo'],
+    strike: [0, 1, 6, 9, 10, 11, 12, 16], clean: "I think we should ship it on Friday after the demo." },
+  { app: 'Gmail · Reply', raw: ['hey', 'priya', 'can', 'you', 'like', 'send', 'me', 'the', 'final', 'deck', 'by', 'uh', 'tomorrow', 'morning', 'thanks'],
+    strike: [4, 11], clean: "Hey Priya, can you send me the final deck by tomorrow morning? Thanks!" },
+  { app: 'Notion · To-do', raw: ['okay', 'so', 'first', 'fix', 'the', 'login', 'bug', 'second', 'update', 'pricing', 'and', 'third', 'email', 'the', 'investors'],
+    strike: [0, 1], clean: "1. Fix the login bug\n2. Update pricing\n3. Email the investors" },
+];
+const rawEl = document.getElementById('raw'), cleanEl = document.getElementById('clean'), pill = document.getElementById('pill'),
+      key = document.getElementById('key'), appEl = document.getElementById('app'), bars = [...pill.querySelectorAll('b')];
+const wait = ms => new Promise(r => setTimeout(r, ms));
+let barTimer;
+function animateBars(on) {
+  clearInterval(barTimer);
+  if (on) barTimer = setInterval(() => bars.forEach(b => b.style.height = (4 + Math.random() * 20) + 'px'), 90);
+}
+async function loop() {
+  for (let i = 0; ; i = (i + 1) % scenes.length) {
+    const s = scenes[i];
+    appEl.textContent = s.app; rawEl.innerHTML = ''; cleanEl.textContent = ''; cleanEl.classList.remove('on');
+    await wait(700);
+    key.classList.add('down'); key.textContent = 'fn ●'; pill.className = 'pill listen'; animateBars(true);
+    for (const w of s.raw) { rawEl.insertAdjacentHTML('beforeend', `<span>${w} </span>`); await wait(150); }
+    key.classList.remove('down'); key.textContent = 'hold fn'; animateBars(false); pill.className = 'pill think';
+    [...rawEl.children].forEach((sp, j) => { if (s.strike.includes(j)) sp.innerHTML = `<s>${sp.textContent.trim()}</s> `; });
+    await wait(650);
+    pill.className = 'pill'; cleanEl.style.whiteSpace = 'pre-line'; cleanEl.textContent = s.clean; cleanEl.classList.add('on');
+    await wait(3200);
+  }
+}
+if (reduce) { rawEl.textContent = scenes[0].raw.join(' '); cleanEl.textContent = scenes[0].clean; cleanEl.classList.add('on'); }
+else loop();
+</script>
 </body>
 </html>
