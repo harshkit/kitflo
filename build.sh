@@ -18,8 +18,8 @@ cat > "$APP/Contents/Info.plist" <<'EOF'
   <key>CFBundleIconFile</key><string>OpenFlo</string>
   <key>CFBundleExecutable</key><string>OpenFlo</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>1.0.1</string>
-  <key>CFBundleVersion</key><string>2</string>
+  <key>CFBundleShortVersionString</key><string>1.1.0</string>
+  <key>CFBundleVersion</key><string>3</string>
   <key>LSMinimumSystemVersion</key><string>26.0</string>
   <key>NSCameraUsageDescription</key><string>OpenFlo shows your camera in a bubble while you record a meeting with camera.</string>
   <key>NSMicrophoneUsageDescription</key><string>OpenFlo listens while you hold the dictation key and transcribes on this Mac.</string>
