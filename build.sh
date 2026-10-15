@@ -18,11 +18,14 @@ cat > "$APP/Contents/Info.plist" <<'EOF'
   <key>CFBundleIconFile</key><string>OpenFlo</string>
   <key>CFBundleExecutable</key><string>OpenFlo</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>1.0</string>
-  <key>CFBundleVersion</key><string>1</string>
+  <key>CFBundleShortVersionString</key><string>1.0.1</string>
+  <key>CFBundleVersion</key><string>2</string>
   <key>LSMinimumSystemVersion</key><string>26.0</string>
   <key>NSMicrophoneUsageDescription</key><string>OpenFlo listens while you hold the dictation key and transcribes on this Mac.</string>
 </dict></plist>
 EOF
-codesign --force --sign - "$APP"
+# Sign with the maintainer's stable identity when present, so macOS keeps the Accessibility
+# permission across updates; otherwise fall back to ad-hoc (permission resets on each rebuild).
+ID=$(security find-certificate -c "OpenFlo Local Signing" -Z 2>/dev/null | awk '/SHA-1/{print $3}')
+codesign --force --sign "${ID:--}" "$APP"
 echo "Installed $APP"
