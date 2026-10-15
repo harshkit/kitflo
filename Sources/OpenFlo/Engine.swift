@@ -6,7 +6,8 @@ import Speech
 // MARK: - Cleanup model server (llama.cpp on Metal, kept warm)
 
 enum LLM {
-    static let model = FileManager.default.homeDirectoryForCurrentUser.appending(path: "OpenFlo/models/qwen2.5-1.5b-instruct-q4_k_m.gguf").path
+    static let model = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        .appending(path: "OpenFlo/models/qwen2.5-1.5b-instruct-q4_k_m.gguf").path
     static let url = URL(string: "http://127.0.0.1:8179")!
     static var proc: Process?
     /// Fresh secret each launch so websites in your browser can't use the local server.
@@ -57,7 +58,9 @@ enum LLM {
 
     static func polish(_ raw: String, app: String, style: Style, vocabulary: [String]) async -> String {
         var system = rules
-        if !vocabulary.isEmpty { system += "\n- Spell these exactly: \(vocabulary.joined(separator: ", "))." }
+        if !vocabulary.isEmpty {
+            system += "\n- The speaker's own words: \(vocabulary.joined(separator: ", ")). Speech recognition often mishears them as similar-sounding phrases; when the context fits, write the speaker's word instead, spelled exactly."
+        }
         system += "\n- Tone: \(style.rawValue). \(style.hint)\nOutput only the cleaned text."
         // ponytail: app name left out of the prompt so the cached prefix survives app switches; add per-app tone if wanted.
         var messages = [["role": "system", "content": system]]
@@ -128,10 +131,11 @@ final class Recorder {
     private let engine = AVAudioEngine()
     private(set) var frames = 0
     private(set) var peak: Float = 0
+    private var envelope: Float = 0.05
     var onLevel: ((Float) -> Void)?
 
     func start(into session: SpeechSession, format outFmt: AVAudioFormat) throws {
-        frames = 0; peak = 0
+        frames = 0; peak = 0; envelope = 0.05
         let input = engine.inputNode
         let inFmt = input.outputFormat(forBus: 0)
         guard let conv = AVAudioConverter(from: inFmt, to: outFmt) else { throw NSError(domain: "OpenFlo", code: 1) }
@@ -144,14 +148,14 @@ final class Recorder {
                 if fed { status.pointee = .noDataNow; return nil }
                 fed = true; status.pointee = .haveData; return buf
             }
-            session.input.yield(AnalyzerInput(buffer: out))
             let n = Int(out.frameLength)
             var sum: Float = 0, pk: Float = 0
             if let p = out.int16ChannelData?[0] {
-                for i in 0..<n { let v = Float(p[i]) / 32768; sum += v * v; pk = max(pk, abs(v)) }
+                (pk, sum) = Self.boost(p, n, envelope: &self.envelope)
             } else if let p = out.floatChannelData?[0] {
                 for i in 0..<n { sum += p[i] * p[i]; pk = max(pk, abs(p[i])) }
             }
+            session.input.yield(AnalyzerInput(buffer: out))
             let rms = sqrt(sum / Float(max(n, 1)))
             DispatchQueue.main.async {
                 self.frames += n
@@ -161,6 +165,21 @@ final class Recorder {
         }
         engine.prepare()
         try engine.start()
+    }
+
+    /// Auto gain: lifts quiet or distant speech toward a healthy level so soft voices are recognized.
+    /// Returns the input peak and the boosted sum of squares (for the level meter).
+    static func boost(_ p: UnsafeMutablePointer<Int16>, _ n: Int, envelope: inout Float) -> (Float, Float) {
+        var pk: Float = 0, sum: Float = 0
+        for i in 0..<n { pk = max(pk, abs(Float(p[i]) / 32768)) }
+        envelope = max(pk, envelope * 0.97, 0.02)
+        let gain = min(10, max(1, 0.45 / envelope))
+        for i in 0..<n {
+            let v = tanh(Float(p[i]) / 32768 * gain) // soft limit, no harsh clipping
+            p[i] = Int16(v * 32767)
+            sum += v * v
+        }
+        return (pk, sum)
     }
 
     func stop() {
@@ -239,12 +258,14 @@ enum Post {
     var ready = false
     var levels = [Float](repeating: 0, count: 22)
     var lastError: String?
+    var toast: String?
 
     private let recorder = Recorder()
     private var next: SpeechSession?   // pre-warmed so key-down starts instantly
     private var current: SpeechSession?
     private var startedAt = Date()
     private var app = ""
+    private var target: NSRunningApplication?
     private var store: Store { .shared }
 
     init() {
@@ -287,7 +308,8 @@ enum Post {
     func keyDown() {
         if phase == .listening && locked { locked = false; finish(); return }
         guard phase == .idle, let session = next, let fmt = SpeechSession.format else { return }
-        app = NSWorkspace.shared.frontmostApplication?.localizedName ?? "an app"
+        target = NSWorkspace.shared.frontmostApplication
+        app = target?.localizedName ?? "an app"
         do { try recorder.start(into: session, format: fmt) } catch { lastError = "Microphone unavailable"; return }
         next = nil
         current = session
@@ -318,10 +340,10 @@ enum Post {
         recorder.stop()
         levels = levels.map { _ in 0 }
         let secs = Double(recorder.frames) / 16000
-        guard secs > 0.35, recorder.peak > 0.02 else { phase = .idle; Task { await session.cancel() }; return }
+        guard secs > 0.35, recorder.peak > 0.004 else { phase = .idle; Task { await session.cancel() }; return }
         phase = .thinking
         sound("Pop")
-        let s = store.s, app = app
+        let s = store.s, app = app, target = target
         Task {
             let raw = (try? await session.finish()) ?? ""
             var text = Post.applyVocabulary(raw, s.words)
@@ -334,7 +356,9 @@ enum Post {
             await MainActor.run {
                 phase = .idle
                 guard !final.isEmpty else { return }
-                Paster.paste(final)
+                Paster.paste(final, into: target) { ok in
+                    if !ok { self.show(AXIsProcessTrusted() ? "Copied, press ⌘V" : "Copied, allow Accessibility to auto-paste") }
+                }
                 store.s.history.insert(Entry(raw: raw, text: final, app: app, seconds: secs), at: 0)
             }
         }
@@ -342,9 +366,11 @@ enum Post {
 
     /// `OpenFlo --file speech.wav`: runs the same pipeline on a file and prints timings.
     func runFile(_ path: String) async {
+        let args = CommandLine.arguments
         LLM.start()
         while !(await LLM.ready()) { try? await Task.sleep(for: .milliseconds(300)) }
-        let s = store.s
+        var s = store.s
+        if let i = args.firstIndex(of: "--words"), i + 1 < args.count { s.words = args[i + 1].components(separatedBy: ",") }
         do {
             let session = try await SpeechSession(locale: s.language, words: s.words)
             let file = try AVAudioFile(forReading: URL(fileURLWithPath: path))
@@ -355,6 +381,10 @@ enum Post {
             let out = AVAudioPCMBuffer(pcmFormat: fmt, frameCapacity: AVAudioFrameCount(Double(file.length) * fmt.sampleRate / file.processingFormat.sampleRate) + 16)!
             var fed = false
             conv.convert(to: out, error: nil) { _, st in if fed { st.pointee = .endOfStream; return nil }; fed = true; st.pointee = .haveData; return inBuf }
+            if args.contains("--boost"), let p = out.int16ChannelData?[0] {
+                var env: Float = 0.05
+                _ = Recorder.boost(p, Int(out.frameLength), envelope: &env)
+            }
             session.input.yield(AnalyzerInput(buffer: out))
             try? await Task.sleep(for: .seconds(Double(file.length) / file.processingFormat.sampleRate)) // as if spoken live
             var t = Date()
@@ -369,6 +399,13 @@ enum Post {
         LLM.stop()
     }
 
+    func show(_ message: String) {
+        toast = message
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+            if self?.toast == message { self?.toast = nil }
+        }
+    }
+
     private func sound(_ name: String) {
         if store.s.sounds { NSSound(named: name)?.play() }
     }
@@ -377,21 +414,33 @@ enum Post {
 // MARK: - Typing into the focused app
 
 enum Paster {
-    static func paste(_ text: String) {
+    /// Puts text in the field you were typing in. If it can't, the text stays on the clipboard.
+    static func paste(_ text: String, into target: NSRunningApplication?, done: @escaping (Bool) -> Void) {
         let pb = NSPasteboard.general
         let old = pb.string(forType: .string)
         pb.clearContents()
         pb.setString(text, forType: .string)
-        let src = CGEventSource(stateID: .combinedSessionState)
-        for down in [true, false] {
-            let e = CGEvent(keyboardEventSource: src, virtualKey: 9, keyDown: down) // 9 = V
-            e?.flags = .maskCommand
-            e?.post(tap: .cghidEventTap)
+        guard AXIsProcessTrusted() else { done(false); return }
+        // A popup (like the fn emoji picker) may have stolen focus; hand it back to the app you were typing in.
+        var delay = 0.0
+        if let target, target != NSWorkspace.shared.frontmostApplication {
+            target.activate()
+            delay = 0.15
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-            guard let old, pb.string(forType: .string) == text else { return }
-            pb.clearContents()
-            pb.setString(old, forType: .string)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            let src = CGEventSource(stateID: .hidSystemState)
+            let cmd: CGKeyCode = 55, v: CGKeyCode = 9
+            for (key, down) in [(cmd, true), (v, true), (v, false), (cmd, false)] {
+                let e = CGEvent(keyboardEventSource: src, virtualKey: key, keyDown: down)
+                e?.flags = (key == v || down) ? .maskCommand : []
+                e?.post(tap: .cghidEventTap)
+            }
+            done(true)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                guard let old, pb.string(forType: .string) == text else { return }
+                pb.clearContents()
+                pb.setString(old, forType: .string)
+            }
         }
     }
 }

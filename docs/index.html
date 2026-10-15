@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenFlo: Free Offline Voice Dictation for Mac</title>
+<meta name="description" content="OpenFlo is a free, open-source voice dictation app for Mac. Hold fn, speak, and get clean, punctuated text in any app. 100% offline and private: a free alternative to paid AI dictation apps.">
+<meta name="keywords" content="voice dictation mac, speech to text mac, offline dictation, free dictation app, wispr flow alternative, superwhisper alternative, voice typing macOS, open source dictation">
+<link rel="canonical" href="https://harshkit.github.io/openflo/">
+<meta property="og:title" content="OpenFlo: Free Offline Voice Dictation for Mac">
+<meta property="og:description" content="Hold fn, talk, get clean text in any app. Runs 100% on your Mac. Free and open source.">
+<meta property="og:image" content="https://raw.githubusercontent.com/harshkit/openflo/main/assets/icon.png">
+<meta property="og:url" content="https://harshkit.github.io/openflo/">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="https://raw.githubusercontent.com/harshkit/openflo/main/assets/icon.png">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"OpenFlo","operatingSystem":"macOS 26+","applicationCategory":"ProductivityApplication","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Free, open-source, offline voice dictation for Mac with local AI cleanup.","url":"https://harshkit.github.io/openflo/","downloadUrl":"https://github.com/harshkit/openflo/releases/latest","license":"https://opensource.org/licenses/MIT","author":{"@type":"Person","name":"Harsh Sharma","url":"https://github.com/harshkit"}}
+</script>
+<style>
+  :root { --bg:#f9f6f1; --card:#fff; --ink:#1c1a18; --muted:#6b655e; --accent:#ff9e52; --line:#e8e2d9; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#1c1a19; --card:#262422; --ink:#f3efe9; --muted:#a39c93; --line:#36322e; } }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--ink); font:17px/1.6 -apple-system,BlinkMacSystemFont,"Inter",sans-serif; }
+  main { max-width:880px; margin:0 auto; padding:56px 16px 80px; }
+  h1,h2 { font-family:"New York",Georgia,serif; font-weight:400; letter-spacing:-.01em }
+  h1 { font-size:clamp(36px,7vw,60px); line-height:1.05; margin:20px 0 14px }
+  h2 { font-size:28px; margin:56px 0 12px }
+  .lead { font-size:20px; color:var(--muted); max-width:640px }
+  .icon { width:96px; height:96px }
+  pre { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; overflow-x:auto; font-size:14px }
+  .btns { display:flex; gap:12px; flex-wrap:wrap; margin:24px 0 }
+  .btn { display:inline-block; padding:12px 20px; border-radius:999px; text-decoration:none; font-weight:600; border:1px solid var(--line); color:var(--ink); background:var(--card) }
+  .btn.primary { background:var(--ink); color:var(--bg); border-color:var(--ink) }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px }
+  .card b { display:block; margin-bottom:4px }
+  .card span { color:var(--muted); font-size:15px }
+  table { width:100%; border-collapse:collapse; background:var(--card); border-radius:12px; overflow:hidden }
+  td,th { padding:12px 14px; border-bottom:1px solid var(--line); text-align:left; font-size:15px }
+  footer { margin-top:64px; color:var(--muted); font-size:14px }
+  a { color:inherit }
+</style>
+</head>
+<body>
+<main>
+  <img class="icon" src="https://raw.githubusercontent.com/harshkit/openflo/main/assets/icon.png" alt="OpenFlo app icon">
+  <h1>Talk. It types.<br>Nothing leaves your Mac.</h1>
+  <p class="lead">OpenFlo is free, open-source voice dictation for macOS. Hold <b>fn</b>, speak naturally and get clean, punctuated text in any app, in under a second, fully offline.</p>
+  <div class="btns">
+    <a class="btn primary" href="#install">Install free</a>
+    <a class="btn" href="https://github.com/harshkit/openflo">★ Star on GitHub</a>
+  </div>
+
+  <h2 id="install">Install in one line</h2>
+  <pre><code>curl -fsSL https://raw.githubusercontent.com/harshkit/openflo/main/install.sh | bash</code></pre>
+  <p style="color:var(--muted)">Requires macOS 26 or newer on Apple Silicon. Installs the local AI engine, a ~1 GB model and the app.</p>
+
+  <h2>What it does</h2>
+  <div class="grid">
+    <div class="card"><b>Hold fn, speak, release</b><span>Text lands in Slack, Gmail, Notion, VS Code or any text box.</span></div>
+    <div class="card"><b>Cleans up your speech</b><span>Removes ums and stutters, applies "no wait, I mean…" corrections and fixes punctuation.</span></div>
+    <div class="card"><b>Under a second</b><span>Streaming on-device recognition plus a small local LLM on Metal.</span></div>
+    <div class="card"><b>Private by design</b><span>No account, no telemetry, no servers. Audio is never saved.</span></div>
+    <div class="card"><b>Notes, Dictionary, Snippets</b><span>Think out loud, keep names spelled right, expand shortcuts.</span></div>
+    <div class="card"><b>12 languages</b><span>Including Indian, US, UK and Australian English.</span></div>
+  </div>
+
+  <h2>Free vs. paid dictation apps</h2>
+  <table>
+    <tr><th></th><th>OpenFlo</th><th>Typical cloud app</th></tr>
+    <tr><td>Price</td><td><b>Free</b></td><td>$12–15/month</td></tr>
+    <tr><td>Your voice</td><td><b>Stays on your Mac</b></td><td>Uploaded to servers</td></tr>
+    <tr><td>Offline</td><td><b>Yes</b></td><td>No</td></tr>
+    <tr><td>Open source</td><td><b>MIT</b></td><td>No</td></tr>
+  </table>
+
+  <footer>
+    Made by <a href="https://github.com/harshkit">Harsh Sharma</a> · <a href="https://github.com/harshkit/openflo/blob/main/PRIVACY.md">Privacy</a> · <a href="https://github.com/harshkit/openflo/blob/main/LICENSE">MIT License</a><br>
+    OpenFlo is an independent project, not affiliated with any other dictation app.
+  </footer>
+</main>
+</body>
+</html>

@@ -35,22 +35,48 @@ enum Hotkey: String, Codable, CaseIterable, Identifiable {
     var keyCode: UInt16 { switch self { case .fn: 63; case .rightOption: 61; case .rightCommand: 54 } }
 }
 
+struct Note: Codable, Identifiable {
+    var id = UUID()
+    var date = Date()
+    var text = ""
+    var title: String { text.split(separator: "\n").first.map(String.init) ?? "New note" }
+}
+
 struct Saved: Codable {
     var history: [Entry] = []
     var words: [String] = []
     var snippets: [Snippet] = []
+    var notes: [Note] = []
     var style: Style = .casual
     var hotkey: Hotkey = .fn
     var aiCleanup = true
     var language = "en-IN"
     var sounds = true
+
+    init() {}
+
+    // Every field is optional on disk so adding a setting never wipes an older store.
+    init(from d: Decoder) throws {
+        let c = try d.container(keyedBy: CodingKeys.self)
+        history = try c.decodeIfPresent([Entry].self, forKey: .history) ?? []
+        words = try c.decodeIfPresent([String].self, forKey: .words) ?? []
+        snippets = try c.decodeIfPresent([Snippet].self, forKey: .snippets) ?? []
+        notes = try c.decodeIfPresent([Note].self, forKey: .notes) ?? []
+        style = try c.decodeIfPresent(Style.self, forKey: .style) ?? .casual
+        hotkey = try c.decodeIfPresent(Hotkey.self, forKey: .hotkey) ?? .fn
+        aiCleanup = try c.decodeIfPresent(Bool.self, forKey: .aiCleanup) ?? true
+        language = try c.decodeIfPresent(String.self, forKey: .language) ?? "en-IN"
+        sounds = try c.decodeIfPresent(Bool.self, forKey: .sounds) ?? true
+    }
 }
 
 @Observable final class Store {
     static let shared = Store()
+    var page: Page = .home        // not saved: which screen the main window shows
+    var noteID: UUID?
     var s = Saved() { didSet { save() } }
 
-    private let url: URL = {
+    @ObservationIgnored private let url: URL = {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appending(path: "OpenFlo")
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir.appending(path: "store.json")
@@ -58,6 +84,19 @@ struct Saved: Codable {
 
     init() {
         if let d = try? Data(contentsOf: url), let v = try? JSONDecoder().decode(Saved.self, from: d) { s = v }
+    }
+
+    func newNote() {
+        let n = Note()
+        s.notes.insert(n, at: 0)
+        noteID = n.id
+        page = .notes
+    }
+
+    /// True when the 🌐/fn key still triggers a macOS action on release (emoji picker, input switch),
+    /// which steals focus from the text field right before OpenFlo pastes.
+    var fnKeyConflicts: Bool {
+        (UserDefaults(suiteName: "com.apple.HIToolbox")?.object(forKey: "AppleFnUsageType") as? Int ?? 2) != 0
     }
 
     private func save() {

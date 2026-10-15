@@ -31,6 +31,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         status.button?.image = NSImage(systemSymbolName: "waveform", accessibilityDescription: "OpenFlo")
         let menu = NSMenu()
         menu.addItem(withTitle: "Open OpenFlo", action: #selector(openWindow), keyEquivalent: "o")
+        menu.addItem(withTitle: "New Note", action: #selector(newNote), keyEquivalent: "n")
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit OpenFlo", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         status.menu = menu
@@ -63,6 +64,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard down != keyIsDown else { return }
         keyIsDown = down
         if down { overlay.reposition(); Flow.shared.keyDown() } else { Flow.shared.keyUp() }
+    }
+
+    @objc func newNote() {
+        Store.shared.newNote()
+        openWindow()
     }
 
     @objc func openWindow() {

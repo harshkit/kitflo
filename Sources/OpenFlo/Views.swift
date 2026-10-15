@@ -3,11 +3,12 @@ import AVFoundation
 import SwiftUI
 
 enum Page: String, CaseIterable, Identifiable {
-    case home = "Home", dictionary = "Dictionary", snippets = "Snippets", style = "Style", settings = "Settings"
+    case home = "Home", notes = "Notes", dictionary = "Dictionary", snippets = "Snippets", style = "Style", settings = "Settings"
     var id: String { rawValue }
     var icon: String {
         switch self {
         case .home: "house"
+        case .notes: "note.text"
         case .dictionary: "character.book.closed"
         case .snippets: "scissors"
         case .style: "textformat"
@@ -24,7 +25,7 @@ extension Color {
 }
 
 struct MainView: View {
-    @State private var page: Page = .home
+    @Bindable var store = Store.shared
 
     var body: some View {
         HStack(spacing: 0) {
@@ -35,11 +36,11 @@ struct MainView: View {
                 }
                 .padding(.horizontal, 10).padding(.top, 40).padding(.bottom, 18)
                 ForEach(Page.allCases) { p in
-                    Button { page = p } label: {
+                    Button { store.page = p } label: {
                         Label(p.rawValue, systemImage: p.icon)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 10).padding(.vertical, 7)
-                            .background(RoundedRectangle(cornerRadius: 8).fill(page == p ? Color.primary.opacity(0.08) : .clear))
+                            .background(RoundedRectangle(cornerRadius: 8).fill(store.page == p ? Color.primary.opacity(0.08) : .clear))
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
@@ -52,8 +53,9 @@ struct MainView: View {
 
             ScrollView {
                 Group {
-                    switch page {
+                    switch store.page {
                     case .home: HomePage()
+                    case .notes: NotesPage()
                     case .dictionary: DictionaryPage()
                     case .snippets: SnippetsPage()
                     case .style: StylePage()
@@ -102,6 +104,7 @@ struct HomePage: View {
         VStack(alignment: .leading, spacing: 22) {
             Title(text: "Welcome back, \(NSFullUserName().split(separator: " ").first.map(String.init) ?? "there")",
                   sub: "Hold \(store.s.hotkey.rawValue) and speak in any app. Tap it once for hands-free.")
+            SetupWarnings()
             HStack(spacing: 12) {
                 Stat(value: "\(store.streak)", label: "day streak", icon: "flame")
                 Stat(value: "\(store.weekWords)", label: "words this week", icon: "text.word.spacing")
@@ -157,6 +160,101 @@ struct HistoryRow: View {
                 .buttonStyle(.borderless).help("Copy")
         }
         .padding(.vertical, 12)
+    }
+}
+
+/// Shows the two setup problems that silently stop auto-paste.
+struct SetupWarnings: View {
+    let store = Store.shared
+    @State private var tick = 0
+    var body: some View {
+        VStack(spacing: 8) {
+            if !AXIsProcessTrusted() {
+                Warning(text: "OpenFlo can't paste yet. Turn it on in Privacy & Security → Accessibility.",
+                        button: "Open Accessibility",
+                        url: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
+            }
+            if store.s.hotkey == .fn && store.fnKeyConflicts {
+                Warning(text: "Releasing 🌐 fn opens a macOS popup that steals the paste. Set “Press 🌐 key to” → Do Nothing.",
+                        button: "Open Keyboard",
+                        url: "x-apple.systempreferences:com.apple.Keyboard-Settings.extension")
+            }
+        }
+        .id(tick)
+        .onReceive(Timer.publish(every: 2, on: .main, in: .common).autoconnect()) { _ in tick += 1 }
+    }
+}
+
+struct Warning: View {
+    let text: String, button: String, url: String
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+            Text(text).font(.callout)
+            Spacer()
+            Button(button) { NSWorkspace.shared.open(URL(string: url)!) }
+        }
+        .padding(12)
+        .background(RoundedRectangle(cornerRadius: 10).fill(Color.orange.opacity(0.12)))
+    }
+}
+
+// MARK: Notes
+
+struct NotesPage: View {
+    @Bindable var store = Store.shared
+    @FocusState private var editing: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .firstTextBaseline) {
+                Title(text: "Notes", sub: "Click into a note and hold fn to think out loud. Everything stays on this Mac.")
+                Spacer()
+                Button { store.newNote(); editing = true } label: { Label("New note", systemImage: "square.and.pencil") }
+            }
+            if let i = store.s.notes.firstIndex(where: { $0.id == store.noteID }) {
+                HStack {
+                    Button { store.noteID = nil } label: { Label("All notes", systemImage: "chevron.left") }.buttonStyle(.borderless)
+                    Spacer()
+                    Text(store.s.notes[i].date, format: .dateTime.day().month().hour().minute()).font(.caption).foregroundStyle(.secondary)
+                    Button {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(store.s.notes[i].text, forType: .string)
+                    } label: { Image(systemName: "doc.on.doc") }.buttonStyle(.borderless).help("Copy note")
+                    Button(role: .destructive) {
+                        store.s.notes.remove(at: i); store.noteID = nil
+                    } label: { Image(systemName: "trash") }.buttonStyle(.borderless).help("Delete note")
+                }
+                TextEditor(text: $store.s.notes[i].text)
+                    .font(.system(size: 15, design: .serif))
+                    .scrollContentBackground(.hidden)
+                    .padding(12)
+                    .frame(minHeight: 380)
+                    .background(RoundedRectangle(cornerRadius: 12).fill(Color.paper))
+                    .focused($editing)
+            } else if store.s.notes.isEmpty {
+                Text("No notes yet. Press New note, then hold fn and speak.").foregroundStyle(.secondary).padding(.vertical, 30)
+            } else {
+                LazyVStack(spacing: 0) {
+                    ForEach(store.s.notes) { n in
+                        Button { store.noteID = n.id; editing = true } label: {
+                            HStack(alignment: .top) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(n.title.isEmpty ? "New note" : n.title).fontWeight(.medium).lineLimit(1)
+                                    Text(n.text.split(separator: "\n").dropFirst().joined(separator: " "))
+                                        .font(.callout).foregroundStyle(.secondary).lineLimit(2)
+                                }
+                                Spacer()
+                                Text(n.date, format: .dateTime.day().month()).font(.caption).foregroundStyle(.secondary)
+                            }
+                            .padding(.vertical, 12).contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        Divider()
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -323,7 +421,7 @@ struct SettingsPage: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Speech: Apple on-device SpeechAnalyzer (Neural Engine, live streaming)")
                     Text("Cleanup: Qwen2.5 1.5B Instruct (Q4, Metal via llama.cpp)")
-                    Text("Models folder: ~/OpenFlo/models").foregroundStyle(.secondary)
+                    Text("Models folder: ~/Library/Application Support/OpenFlo/models").foregroundStyle(.secondary)
                 }.font(.callout).frame(maxWidth: .infinity, alignment: .leading).padding(8)
             }
             HStack {

@@ -11,10 +11,9 @@ Thanks for helping. OpenFlo aims to stay **small, fast and fully local**. Please
 ## Getting started
 
 ```bash
-git clone https://github.com/<you>/openflo.git ~/OpenFlo
-cd ~/OpenFlo
+git clone https://github.com/<you>/openflo.git && cd openflo
 brew install llama.cpp
-# download the model as shown in the README, then:
+# download the model as shown in the README ("Build from source"), then:
 swift build -c release
 .build/release/OpenFlo --selftest
 .build/release/OpenFlo --file sample.wav

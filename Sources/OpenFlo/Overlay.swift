@@ -4,7 +4,7 @@ import SwiftUI
 /// The little pill that floats at the bottom of the screen.
 final class OverlayPanel: NSPanel {
     init() {
-        super.init(contentRect: NSRect(x: 0, y: 0, width: 240, height: 64),
+        super.init(contentRect: NSRect(x: 0, y: 0, width: 360, height: 64),
                    styleMask: [.nonactivatingPanel, .borderless], backing: .buffered, defer: false)
         level = .statusBar
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
@@ -36,7 +36,9 @@ struct PillView: View {
             HStack(spacing: 8) {
                 switch flow.phase {
                 case .idle:
-                    EmptyView()
+                    if let t = flow.toast {
+                        Text(t).font(.system(size: 12, weight: .medium)).foregroundStyle(.white).lineLimit(1).fixedSize()
+                    }
                 case .listening:
                     if flow.locked {
                         Button { flow.cancel() } label: {
@@ -49,16 +51,19 @@ struct PillView: View {
                     Dots()
                 }
             }
-            .padding(.horizontal, flow.phase == .idle ? 0 : 14)
-            .frame(width: width, height: flow.phase == .idle ? 6 : 34)
-            .background(Capsule().fill(.black.opacity(flow.phase == .idle ? 0.35 : 0.92)))
-            .overlay(Capsule().strokeBorder(.white.opacity(flow.phase == .idle ? 0.25 : 0.15), lineWidth: 1))
+            .padding(.horizontal, compact ? 0 : 14)
+            .frame(width: flow.toast != nil && flow.phase == .idle ? nil : width, height: compact ? 6 : 34)
+            .background(Capsule().fill(.black.opacity(compact ? 0.35 : 0.92)))
+            .overlay(Capsule().strokeBorder(.white.opacity(compact ? 0.25 : 0.15), lineWidth: 1))
+            .animation(.spring(response: 0.32, dampingFraction: 0.78), value: flow.toast)
             .animation(.spring(response: 0.32, dampingFraction: 0.78), value: flow.phase)
             .animation(.spring(response: 0.32, dampingFraction: 0.78), value: flow.locked)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.bottom, 4)
     }
+
+    private var compact: Bool { flow.phase == .idle && flow.toast == nil }
 
     private var width: CGFloat {
         switch flow.phase {
