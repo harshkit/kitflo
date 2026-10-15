@@ -78,7 +78,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return main
     }
 
-    func applicationWillTerminate(_ n: Notification) { LLM.stop() }
+    func applicationWillTerminate(_ n: Notification) {
+        LLM.stop()
+        MeetingRecorder.shared.shutdown()   // never leave a screen/mic capture running after quit
+    }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
         openWindow(); return true
@@ -88,13 +91,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let handler: (NSEvent) -> Void = { [weak self] e in self?.flagsChanged(e) }
         if let g = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged, handler: handler) { monitors.append(g) }
         if let l = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged, handler: { handler($0); return $0 }) { monitors.append(l) }
+        // Any other key while the hotkey is held means a shortcut (e.g. ⌥← to jump words), not dictation: cancel.
+        let typed: (NSEvent) -> Void = { [weak self] _ in
+            guard let self, self.keyIsDown, Flow.shared.phase == .listening, !Flow.shared.locked else { return }
+            Flow.shared.cancel()
+        }
+        if let g = NSEvent.addGlobalMonitorForEvents(matching: .keyDown, handler: typed) { monitors.append(g) }
+        if let l = NSEvent.addLocalMonitorForEvents(matching: .keyDown, handler: { typed($0); return $0 }) { monitors.append(l) }
+        // Safety net: a missed key-up event must never leave the mic on. Check the real key state twice a second.
+        Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+            guard let self, self.keyIsDown else { return }
+            if !Store.shared.s.hotkey.isDown(CGEventSource.flagsState(.combinedSessionState).rawValue) {
+                Log.write("hotkey release was missed; stopping")
+                self.keyIsDown = false
+                Flow.shared.keyUp()
+            }
+        }
     }
 
     private func flagsChanged(_ e: NSEvent) {
         let key = Store.shared.s.hotkey
         guard e.keyCode == key.keyCode else { return }
-        let flag: NSEvent.ModifierFlags = switch key { case .fn: .function; case .rightOption: .option; case .rightCommand: .command }
-        let down = e.modifierFlags.contains(flag)
+        let down = key.isDown(UInt64(e.modifierFlags.rawValue))
         guard down != keyIsDown else { return }
         keyIsDown = down
         if down { overlay.reposition(); Flow.shared.keyDown() } else { Flow.shared.keyUp() }

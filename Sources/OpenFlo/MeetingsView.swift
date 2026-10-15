@@ -5,8 +5,8 @@ import SwiftUI
 struct MeetingsPage: View {
     @Bindable var store = Store.shared
     var body: some View {
-        if let i = store.s.meetings.firstIndex(where: { $0.id == store.meetingID }) {
-            MeetingDetail(index: i)
+        if let id = store.meetingID, store.s.meetings.contains(where: { $0.id == id }) {
+            MeetingDetail(id: id)
         } else {
             VStack(alignment: .leading, spacing: 22) {
                 Title(text: "Notes", sub: "Record a meeting, call or anything on screen. OpenFlo works out who said what and writes the notes, all on this Mac.")
@@ -204,12 +204,19 @@ struct MeetingRow: View {
 
 struct MeetingDetail: View {
     @Bindable var store = Store.shared
-    let index: Int
+    let id: UUID   // by ID, not list position: the list changes when a recording is added or deleted
     @State private var tab = 0
 
-    private var m: Meeting { store.s.meetings[index] }
-
     var body: some View {
+        if let m = store.s.meetings.first(where: { $0.id == id }) { content(m) }
+    }
+
+    private var title: Binding<String> {
+        Binding(get: { store.s.meetings.first { $0.id == id }?.title ?? "" },
+                set: { new in if let i = store.s.meetings.firstIndex(where: { $0.id == id }) { store.s.meetings[i].title = new } })
+    }
+
+    private func content(_ m: Meeting) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Button { store.meetingID = nil } label: { Label("All recordings", systemImage: "chevron.left") }.buttonStyle(.borderless)
@@ -228,7 +235,7 @@ struct MeetingDetail: View {
                     store.s.meetings.removeAll { $0.id == id }
                 } label: { Image(systemName: "trash") }
             }
-            TextField("Title", text: $store.s.meetings[index].title)
+            TextField("Title", text: title)
                 .font(.system(size: 28, design: .serif)).textFieldStyle(.plain)
             Text("\(m.date.formatted(date: .abbreviated, time: .shortened)) · \(MeetingNotes.clock(m.duration)) · \(m.mode.rawValue) · \(m.source)")
                 .font(.callout).foregroundStyle(.secondary)

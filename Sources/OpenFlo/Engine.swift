@@ -414,6 +414,14 @@ enum Post {
         current = session
         startedAt = Date()
         phase = .listening
+        // Hard cap so the mic can never stay on indefinitely (e.g. hands-free mode left running).
+        let started = startedAt
+        DispatchQueue.main.asyncAfter(deadline: .now() + 600) { [weak self] in
+            guard let self, self.phase == .listening, self.startedAt == started else { return }
+            Log.write("dictation hit the 10-minute limit; finishing")
+            self.locked = false
+            self.finish()
+        }
         sound("Tink")
         prepareNext()
     }

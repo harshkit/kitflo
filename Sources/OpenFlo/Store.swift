@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 import Observation
 
 struct Entry: Codable, Identifiable {
@@ -33,6 +33,16 @@ enum Hotkey: String, Codable, CaseIterable, Identifiable {
     case fn = "fn (Globe)", rightOption = "Right ⌥ Option", rightCommand = "Right ⌘ Command"
     var id: String { rawValue }
     var keyCode: UInt16 { switch self { case .fn: 63; case .rightOption: 61; case .rightCommand: 54 } }
+
+    /// True when this exact key is held. Uses the right-hand device bits so the left Option/Command key
+    /// can't make a right-hand hotkey look "still down" (which kept the mic open).
+    func isDown(_ flags: UInt64) -> Bool {
+        switch self {
+        case .fn: flags & UInt64(NSEvent.ModifierFlags.function.rawValue) != 0
+        case .rightOption: flags & 0x40 != 0    // NX_DEVICERALTKEYMASK
+        case .rightCommand: flags & 0x10 != 0   // NX_DEVICERCMDKEYMASK
+        }
+    }
 }
 
 enum Engine: String, Codable, CaseIterable, Identifiable {

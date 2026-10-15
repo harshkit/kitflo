@@ -24,6 +24,7 @@ import Vision
     var hasCamera: Bool { camera != nil }
     func elapsed(_ now: Date) -> Double { now.timeIntervalSince(startedAt) - pausedSeconds - (pauseStart.map { now.timeIntervalSince($0) } ?? 0) }
     @ObservationIgnored private var config = SCStreamConfiguration()
+    @ObservationIgnored private var micAttached = false
     @ObservationIgnored private var videoURL: URL?
     @ObservationIgnored var videoStart: CMTime?                       // host time the movie file's first frame was written
     @ObservationIgnored private var pauses: [(CMTime, CMTime?)] = []  // host-time pause intervals, cut out at Stop
@@ -71,6 +72,23 @@ import Vision
 
     func useEntireScreen() { picked = nil; pickedLabel = "Entire screen" }
 
+    /// Releases the system picker so macOS stops showing the "being shared" badge on the chosen window.
+    private func releasePicker() {
+        SCContentSharingPicker.shared.isActive = false
+        SCContentSharingPicker.shared.remove(self)
+    }
+
+    /// Called on quit: stop any capture right away so nothing keeps the mic or screen after OpenFlo exits.
+    func shutdown() {
+        releasePicker()
+        guard let s = stream else { return }
+        let done = DispatchSemaphore(value: 0)
+        s.stopCapture { _ in done.signal() }
+        _ = done.wait(timeout: .now() + 2)
+        stream = nil
+        Log.write("stopped capture on quit")
+    }
+
     func contentSharingPicker(_ picker: SCContentSharingPicker, didUpdateWith filter: SCContentFilter, for stream: SCStream?) {
         let label: String
         switch filter.style {
@@ -87,12 +105,12 @@ import Vision
             self.picked = filter
             self.pickedLabel = label.isEmpty ? "Selected window" : label
             self.error = nil
-            picker.isActive = false
+            self.releasePicker()
         }
     }
 
     func contentSharingPicker(_ picker: SCContentSharingPicker, didCancelFor stream: SCStream?) {
-        DispatchQueue.main.async { picker.isActive = false }
+        DispatchQueue.main.async { self.releasePicker() }
     }
 
     func contentSharingPickerStartDidFailWithError(_ error: Error) {
@@ -154,7 +172,8 @@ import Vision
 
             let s = SCStream(filter: filter, configuration: cfg, delegate: self)
             if systemOn { try s.addStreamOutput(self, type: .audio, sampleHandlerQueue: queue) }
-            try s.addStreamOutput(self, type: .microphone, sampleHandlerQueue: queue)   // always attached; the mic switch toggles capture
+            // Attach the mic only when it's on: an attached mic output makes macOS open the microphone even if muted.
+            if micOn { try s.addStreamOutput(self, type: .microphone, sampleHandlerQueue: queue); micAttached = true } else { micAttached = false }
             videoURL = nil; videoStart = nil; pauses = []; screenLines = []; lastOCR = .zero
             if mode != .audio {
                 try addVideo(to: s)
@@ -237,6 +256,10 @@ import Vision
     func toggleMic() {
         guard let s = stream else { return }
         micLive.toggle()
+        if micLive && !micAttached {
+            do { try s.addStreamOutput(self, type: .microphone, sampleHandlerQueue: queue); micAttached = true }
+            catch { micLive = false; self.error = "Couldn't turn the mic on: \(error.localizedDescription)"; return }
+        }
         config.captureMicrophone = micLive
         let cfg = config
         Task { try? await s.updateConfiguration(cfg) }
@@ -268,7 +291,7 @@ import Vision
         liveTask?.cancel()
         try? await s.stopCapture()
         stream = nil; output = nil
-        await MainActor.run { bar?.close(); bar = nil }
+        await MainActor.run { bar?.close(); bar = nil; releasePicker() }
         let (m, y) = lock.withLock { (mic.samples, sys.samples) }
         let duration = Double(max(m.count, y.count)) / Self.rate
         let now = CMClockGetTime(CMClockGetHostTimeClock())
