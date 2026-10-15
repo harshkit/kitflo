@@ -15,7 +15,7 @@ OpenFlo is a voice dictation app for macOS that runs entirely on your own comput
 
 | Data | When | Where it goes |
 |---|---|---|
-| **Microphone audio** | Only while you hold (or have toggled) the dictation key | Streamed in memory to Apple's on-device speech recognizer (`SpeechAnalyzer`). Never written to disk, never uploaded. Discarded once transcription finishes. |
+| **Microphone audio** | Only while you hold (or have toggled) the dictation key | Processed in memory by an on-device speech model: NVIDIA Parakeet (default) or Apple's `SpeechAnalyzer`, whichever you pick in Settings. Never written to disk, never uploaded. Discarded once transcription finishes. |
 | **Transcript text** | After each dictation | Sent to a local AI model (`llama-server`) on `127.0.0.1`, which only your own Mac can reach. The server needs a random key generated at each launch, so other apps and websites can't use it. |
 | **Name of the frontmost app** | When dictation starts | Stored with that history entry so you can see where you dictated. Never sent anywhere. |
 | **Clipboard** | When pasting | OpenFlo puts the text on your clipboard, presses ⌘V, then puts your previous clipboard text back about 0.8 s later. |
@@ -42,11 +42,12 @@ You can revoke either at any time in System Settings → Privacy & Security.
 
 OpenFlo does not send your audio, text or settings anywhere. The only network activity related to it is:
 
-- **Apple speech models**: the first time you use a language, macOS downloads Apple's on-device speech model for it from Apple. That download is handled by macOS under [Apple's privacy policy](https://www.apple.com/legal/privacy/). Recognition itself then runs offline.
+- **Speech models, one time**: the first time you dictate, OpenFlo downloads the Parakeet speech model files (~570 MB) from Hugging Face into `~/Library/Application Support/FluidAudio/`. If you use Apple's engine, macOS downloads Apple's model for your language from Apple instead, under [Apple's privacy policy](https://www.apple.com/legal/privacy/). These downloads fetch model files only; none of your audio, text or settings is sent. Recognition then runs offline.
 - **Setup downloads you run yourself**: Homebrew (`llama.cpp`) and the Qwen model file from Hugging Face, per the README. These happen once, from your terminal, and are covered by those services' own policies.
 
 ## Third-party components
 
+- **NVIDIA Parakeet TDT 0.6B v3** (CC-BY-4.0), run through **FluidAudio** (Apache 2.0) on the Neural Engine, locally.
 - **Apple SpeechAnalyzer**: part of macOS, runs on-device.
 - **llama.cpp** (MIT) and **Qwen2.5-1.5B-Instruct** (Apache 2.0): run locally. No data is sent to their authors.
 

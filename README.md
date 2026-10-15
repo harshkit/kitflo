@@ -26,7 +26,7 @@ OpenFlo is a **free, private alternative to paid AI dictation apps** like Wispr 
 curl -fsSL https://raw.githubusercontent.com/harshkit/openflo/main/install.sh | bash
 ```
 
-That installs everything: the local AI engine, the ~1 GB cleanup model and the app. Then allow **Microphone** and **Accessibility** when asked, and set **System Settings → Keyboard → "Press 🌐 key to" → Do Nothing**.
+That installs everything: the local AI engine, the ~1 GB cleanup model and the app. The ~0.57 GB speech model downloads the first time you dictate. Then allow **Microphone** and **Accessibility** when asked, and set **System Settings → Keyboard → "Press 🌐 key to" → Do Nothing**.
 
 ## Features
 
@@ -72,7 +72,7 @@ On test clips with names and tech words from the Dictionary (GitHub, README, Cla
 
 - macOS 26 (Tahoe) or newer
 - Apple Silicon (M1 or newer)
-- ~1 GB free disk
+- ~1.6 GB free disk (cleanup model + speech model)
 
 ## Build from source
 
