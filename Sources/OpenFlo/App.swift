@@ -14,7 +14,7 @@ enum Main {
         let app = NSApplication.shared
         let delegate = AppDelegate()
         app.delegate = delegate
-        app.setActivationPolicy(.accessory)
+        app.setActivationPolicy(.regular)   // shows in the Dock; the menu bar icon stays too
         app.run()
     }
 }
@@ -36,12 +36,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(withTitle: "Quit OpenFlo", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         status.menu = menu
 
+        NSApp.mainMenu = Self.mainMenu()
         overlay = OverlayPanel()
         Flow.shared.boot()
         AVCaptureDevice.requestAccess(for: .audio) { _ in }
         let trusted = AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary)
         installHotkey()
         if !trusted || Store.shared.s.history.isEmpty { openWindow() }
+    }
+
+    /// Standard app + Edit menus: Quit, and ⌘C/⌘V/⌘A inside OpenFlo's own text fields (Notes needs these).
+    private static func mainMenu() -> NSMenu {
+        let main = NSMenu()
+        let appItem = NSMenuItem(), app = NSMenu()
+        app.addItem(withTitle: "About OpenFlo", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        app.addItem(.separator())
+        app.addItem(withTitle: "Hide OpenFlo", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        app.addItem(withTitle: "Quit OpenFlo", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appItem.submenu = app
+        main.addItem(appItem)
+        let editItem = NSMenuItem(), edit = NSMenu(title: "Edit")
+        edit.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
+        edit.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "Z")
+        edit.addItem(.separator())
+        edit.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        edit.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        editItem.submenu = edit
+        main.addItem(editItem)
+        return main
     }
 
     func applicationWillTerminate(_ n: Notification) { LLM.stop() }
