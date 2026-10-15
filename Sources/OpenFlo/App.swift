@@ -7,6 +7,10 @@ enum Main {
     static func main() {
         let args = CommandLine.arguments
         if args.contains("--selftest") { Post.selfTest(); return }
+        if args.contains("--record-test") {
+            Task { await MeetingRecorder.shared.recordTest(); exit(0) }
+            RunLoop.main.run()
+        }
         if let i = args.firstIndex(of: "--meeting"), i + 2 < args.count {
             Task { await MeetingNotes.cli(args[i + 1], args[i + 2]); exit(0) }
             RunLoop.main.run()
@@ -46,6 +50,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         AVCaptureDevice.requestAccess(for: .audio) { _ in }
         let trusted = AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary)
         installHotkey()
+        let sig = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+        Log.write("launch v\(sig) accessibility=\(trusted) screenRecording=\(CGPreflightScreenCaptureAccess()) mic=\(AVCaptureDevice.authorizationStatus(for: .audio).rawValue) camera=\(AVCaptureDevice.authorizationStatus(for: .video).rawValue) path=\(Bundle.main.bundlePath)")
         if !trusted || Store.shared.s.history.isEmpty { openWindow() }
     }
 

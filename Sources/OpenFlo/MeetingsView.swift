@@ -27,34 +27,59 @@ struct MeetingsPage: View {
 
 struct RecorderCard: View {
     @Bindable var rec = MeetingRecorder.shared
-    @State private var mode: RecordMode = .audio
-    @State private var source: CaptureSource = .screen
+    private var mode: RecordMode { store.s.recordMode }
     @State private var micOn = true
     @State private var systemOn = true
     @State private var starting = false
+    @State private var screenOK = CGPreflightScreenCaptureAccess()
+    @Bindable private var store = Store.shared
+
+    /// Screen Recording is needed for system audio and video. Asking (CGRequestScreenCaptureAccess) is what puts
+    /// OpenFlo into the list in System Settings; macOS only applies a new grant after the app restarts.
+    private var permission: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("OpenFlo needs Screen Recording to capture system audio and the screen.", systemImage: "exclamationmark.triangle.fill")
+                .font(.callout).foregroundStyle(.orange)
+            HStack {
+                Button("Allow Screen Recording") {
+                    if !CGRequestScreenCaptureAccess() {
+                        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
+                    }
+                }
+                Button("Fix permissions") { Permissions.fix() }
+                Button("Restart OpenFlo") { Self.relaunch() }
+            }
+            Text("Turn OpenFlo on in the list, then press Restart OpenFlo so macOS applies it. If the switch keeps turning off, press Fix permissions first.").font(.caption).foregroundStyle(.secondary)
+        }
+    }
+
+    static func relaunch() {
+        let path = Bundle.main.bundlePath
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/bin/sh")
+        p.arguments = ["-c", "sleep 1; open \"\(path)\""]
+        try? p.run()
+        NSApp.terminate(nil)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             if rec.recording { live } else { setup }
+            if !screenOK && (mode != .audio || systemOn) { permission }
             if let e = rec.error {
                 Label(e, systemImage: "exclamationmark.triangle.fill").font(.callout).foregroundStyle(.orange)
-                if e.contains("Screen Recording") {
-                    Button("Open Screen Recording settings") {
-                        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
-                    }
-                }
             }
         }
         .padding(22)
         .background(RoundedRectangle(cornerRadius: 16).fill(Color.paper))
-        .task { await rec.refreshSources() }
+        .onReceive(Timer.publish(every: 2, on: .main, in: .common).autoconnect()) { _ in screenOK = CGPreflightScreenCaptureAccess() }
     }
 
     private var setup: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(spacing: 10) {
                 ForEach(RecordMode.allCases) { m in
-                    Button { mode = m } label: {
+                    Button { store.s.recordMode = m } label: {
                         VStack(spacing: 8) {
                             Image(systemName: m.icon).font(.system(size: 20))
                             Text(m.rawValue).font(.system(size: 12, weight: .medium)).multilineTextAlignment(.center)
@@ -67,16 +92,29 @@ struct RecorderCard: View {
                     .buttonStyle(.plain)
                 }
             }
-            HStack {
-                Text("Record from")
-                Menu(source.label) {
-                    Button("Entire screen") { source = .screen }
-                    Menu("An app (e.g. Zoom)") { ForEach(rec.apps) { a in Button(a.label) { source = a } } }
-                    Menu("A window (e.g. one browser window)") { ForEach(rec.windows) { w in Button(w.label) { source = w } } }
-                    Divider()
-                    Button("Refresh list") { Task { await rec.refreshSources() } }
+            HStack(spacing: 10) {
+                Text("Record from").frame(width: 92, alignment: .leading)
+                Label(rec.pickedLabel, systemImage: rec.pickedLabel == "Entire screen" ? "display" : "macwindow")
+                    .lineLimit(1).truncationMode(.middle)
+                    .padding(.horizontal, 10).padding(.vertical, 5)
+                    .background(Capsule().fill(Color.card))
+                Button("Choose screen, app or window…") { rec.choose() }
+                if rec.pickedLabel != "Entire screen" { Button("Entire screen") { rec.useEntireScreen() } }
+                Spacer()
+            }
+            HStack(spacing: 10) {
+                Text("Save to").frame(width: 92, alignment: .leading)
+                Label(MeetingRecorder.folder.path.replacingOccurrences(of: NSHomeDirectory(), with: "~"), systemImage: "folder")
+                    .lineLimit(1).truncationMode(.middle)
+                    .padding(.horizontal, 10).padding(.vertical, 5)
+                    .background(Capsule().fill(Color.card))
+                Button("Change…") {
+                    let panel = NSOpenPanel()
+                    panel.canChooseDirectories = true; panel.canChooseFiles = false; panel.canCreateDirectories = true
+                    panel.prompt = "Save recordings here"
+                    if panel.runModal() == .OK, let url = panel.url { store.s.recordingsFolder = url.path }
                 }
-                .frame(maxWidth: 320)
+                Button("Open") { NSWorkspace.shared.open(MeetingRecorder.folder) }
                 Spacer()
             }
             HStack(spacing: 24) {
@@ -84,23 +122,22 @@ struct RecorderCard: View {
                 Toggle("System audio (others)", isOn: $systemOn)
             }
             .toggleStyle(.switch)
-            if case .window = source {
-                Text("Tip: to record one browser tab, pick the window that has that tab open.").font(.caption).foregroundStyle(.secondary)
-            }
+            Text("Tip: to record one browser tab, choose the window that has that tab open. Picking an app (like Zoom) records only that app's audio and windows.")
+                .font(.caption).foregroundStyle(.secondary)
             HStack {
                 Button {
                     starting = true
-                    Task { await rec.start(mode: mode, source: source, micOn: micOn, systemOn: systemOn); starting = false }
+                    Task { await rec.start(mode: mode, micOn: micOn, systemOn: systemOn); starting = false }
                 } label: {
-                    Label(starting ? "Starting…" : "Start recording", systemImage: "record.circle.fill")
+                    Label(starting ? "Starting…" : "Start recording · \(mode.rawValue)", systemImage: "record.circle.fill")
                         .font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
                         .padding(.horizontal, 22).padding(.vertical, 12)
                         .background(Capsule().fill(Color.primary))
                 }
                 .buttonStyle(.plain)
                 .disabled(starting || (!micOn && !systemOn))
-                Text(mode == .audio ? "Saves audio + transcript + notes" : "Saves video to ~/Movies/OpenFlo + transcript + notes")
-                    .font(.caption).foregroundStyle(.secondary)
+                Text(mode == .audio ? "No video is saved in this mode — audio, transcript and notes only." : "Saves the video, transcript and notes.")
+                    .font(.caption).foregroundStyle(mode == .audio ? Color.orange : Color.secondary)
             }
         }
     }
@@ -196,7 +233,15 @@ struct MeetingDetail: View {
             Text("\(m.date.formatted(date: .abbreviated, time: .shortened)) · \(MeetingNotes.clock(m.duration)) · \(m.mode.rawValue) · \(m.source)")
                 .font(.callout).foregroundStyle(.secondary)
             if let status = m.status {
-                HStack(spacing: 8) { ProgressView().controlSize(.small); Text(status) }.foregroundStyle(.secondary)
+                HStack(spacing: 10) {
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                    Text("Recording stopped and saved.").fontWeight(.medium)
+                    ProgressView().controlSize(.small)
+                    Text(status).foregroundStyle(.secondary)
+                }
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: 10).fill(Color.paper))
             }
             Picker("", selection: $tab) { Text("Notes").tag(0); Text("Transcript").tag(1) }
                 .pickerStyle(.segmented).frame(width: 240)
@@ -247,5 +292,81 @@ struct TranscriptView: View {
     }
     private func color(_ speaker: String) -> Color {
         speaker == "You" ? .green : colors[(Int(speaker.split(separator: " ").last ?? "") ?? 0) % colors.count]
+    }
+}
+
+// MARK: - Floating recording bar (stays out of the recording: OpenFlo's own windows are excluded from capture)
+
+final class RecordingBar {
+    private let panel: NSPanel
+    init() {
+        panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 330, height: 52), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        panel.level = .statusBar
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = true
+        panel.isMovableByWindowBackground = true
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        panel.contentView = NSHostingView(rootView: RecordingBarView())
+        if let f = NSScreen.main?.visibleFrame { panel.setFrameOrigin(NSPoint(x: f.midX - 165, y: f.maxY - 70)) }
+        panel.orderFrontRegardless()
+    }
+    func close() { panel.close() }
+}
+
+struct RecordingBarView: View {
+    let rec = MeetingRecorder.shared
+    var body: some View {
+        HStack(spacing: 12) {
+            TimelineView(.periodic(from: .now, by: 0.5)) { ctx in
+                HStack(spacing: 8) {
+                    Circle().fill(rec.paused ? .yellow : .red).frame(width: 10, height: 10)
+                        .opacity(rec.paused || Int(ctx.date.timeIntervalSinceReferenceDate * 2) % 2 == 0 ? 1 : 0.35)
+                    Text(rec.paused ? "Paused" : MeetingNotes.clock(rec.elapsed(ctx.date)))
+                        .font(.system(size: 14, weight: .semibold).monospacedDigit()).foregroundStyle(.white)
+                        .frame(width: 62, alignment: .leading)
+                }
+            }
+            Divider().frame(height: 22).overlay(.white.opacity(0.2))
+            barButton(rec.micLive ? "mic.fill" : "mic.slash.fill", tint: rec.micLive ? .white : .red, help: rec.micLive ? "Mute mic" : "Unmute mic") { rec.toggleMic() }
+            if rec.hasCamera {
+                barButton(rec.cameraLive ? "video.fill" : "video.slash.fill", tint: rec.cameraLive ? .white : .red, help: rec.cameraLive ? "Hide camera" : "Show camera") { rec.toggleCamera() }
+            }
+            barButton(rec.paused ? "play.fill" : "pause.fill", tint: .white, help: rec.paused ? "Resume" : "Pause") { rec.paused ? rec.resume() : rec.pause() }
+            Button { Task { await rec.stop() } } label: {
+                Label("Stop", systemImage: "stop.fill").font(.system(size: 13, weight: .semibold)).foregroundStyle(.white)
+                    .padding(.horizontal, 12).padding(.vertical, 7).background(Capsule().fill(.red))
+            }
+            .buttonStyle(.plain).help("Stop & write notes")
+        }
+        .padding(.horizontal, 16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Capsule().fill(.black.opacity(0.88)))
+        .overlay(Capsule().strokeBorder(.white.opacity(0.15)))
+    }
+
+    private func barButton(_ icon: String, tint: Color, help: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon).font(.system(size: 14, weight: .semibold)).foregroundStyle(tint)
+                .frame(width: 30, height: 30).background(Circle().fill(.white.opacity(0.1)))
+        }
+        .buttonStyle(.plain).help(help)
+    }
+}
+
+/// Clears OpenFlo's stale permission entries and asks macOS again. Needed when a switch shows "on" but belongs to an
+/// older build, so macOS ignores it. The user still approves each prompt; a restart makes macOS apply the grants.
+enum Permissions {
+    static func fix() {
+        let id = Bundle.main.bundleIdentifier ?? "com.openflo.app"
+        for service in ["Accessibility", "ScreenCapture"] {
+            let p = Process()
+            p.executableURL = URL(fileURLWithPath: "/usr/bin/tccutil")
+            p.arguments = ["reset", service, id]
+            try? p.run(); p.waitUntilExit()
+        }
+        Log.write("permissions reset by user")
+        _ = AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary)
+        _ = CGRequestScreenCaptureAccess()
     }
 }

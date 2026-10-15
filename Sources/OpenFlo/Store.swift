@@ -64,6 +64,7 @@ struct Meeting: Codable, Identifiable {
     var notes = ""
     var file: String?          // recording on disk (~/Movies/OpenFlo)
     var status: String?        // non-nil while OpenFlo is still processing it
+    var screenText: String?    // text read from the screen while recording, used for the notes
 }
 
 struct Saved: Codable {
@@ -71,6 +72,8 @@ struct Saved: Codable {
     var words: [String] = []
     var snippets: [Snippet] = []
     var meetings: [Meeting] = []
+    var recordingsFolder: String?   // nil = ~/Movies/OpenFlo
+    var recordMode: RecordMode = .screen
     var style: Style = .casual
     var hotkey: Hotkey = .fn
     var aiCleanup = true
@@ -87,12 +90,24 @@ struct Saved: Codable {
         words = try c.decodeIfPresent([String].self, forKey: .words) ?? []
         snippets = try c.decodeIfPresent([Snippet].self, forKey: .snippets) ?? []
         meetings = try c.decodeIfPresent([Meeting].self, forKey: .meetings) ?? []
+        recordingsFolder = try c.decodeIfPresent(String.self, forKey: .recordingsFolder)
+        recordMode = try c.decodeIfPresent(RecordMode.self, forKey: .recordMode) ?? .screen
         style = try c.decodeIfPresent(Style.self, forKey: .style) ?? .casual
         hotkey = try c.decodeIfPresent(Hotkey.self, forKey: .hotkey) ?? .fn
         aiCleanup = try c.decodeIfPresent(Bool.self, forKey: .aiCleanup) ?? true
         language = try c.decodeIfPresent(String.self, forKey: .language) ?? "en-IN"
         sounds = try c.decodeIfPresent(Bool.self, forKey: .sounds) ?? true
         engine = try c.decodeIfPresent(Engine.self, forKey: .engine) ?? .parakeet
+    }
+}
+
+/// Plain-text diagnostics at ~/Library/Logs/OpenFlo.log (permission states, recording start/stop, errors). No speech or text.
+enum Log {
+    static let url = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0].appending(path: "Logs/OpenFlo.log")
+    static func write(_ line: String) {
+        let entry = "\(Date().formatted(.iso8601)) \(line)\n"
+        if let h = try? FileHandle(forWritingTo: url) { h.seekToEndOfFile(); h.write(Data(entry.utf8)); try? h.close() }
+        else { try? Data(entry.utf8).write(to: url) }
     }
 }
 

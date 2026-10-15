@@ -33,7 +33,7 @@ That installs everything: the local AI engine, the ~1 GB cleanup model and the a
 - 🎙️ **Hold `fn` to talk, release to paste** into any app: Slack, Gmail, Notion, VS Code, ChatGPT, anything with a text box. **Tap `fn`** for hands-free mode.
 - ⚡ **Fast**: speech streams into the recognizer while you talk, so text appears **~0.6–1.0 s** after you let go (measured on an M2).
 - ✨ **AI cleanup, fully local**: removes filler words and stutters, keeps only your final version ("at 5, no wait, 6" → "at 6"), adds punctuation and turns spoken lists into numbered lists. It cleans up your questions; it never answers them.
-- 🗒️ **Meeting notes**: record a call or meeting (**audio only**, **audio + screen**, or **audio + screen + camera**) from the whole screen, one app (e.g. Zoom) or one window. Turn the mic and system audio on or off. OpenFlo labels who said what (You, Speaker 1, Speaker 2…) and writes a summary, key points, decisions and action items, all on your Mac. Recordings are saved to `~/Movies/OpenFlo`.
+- 🗒️ **Meeting notes**: record a call or meeting (**audio only**, **audio + screen**, or **audio + screen + camera**) from the whole screen, one app (e.g. Zoom) or one window, picked with macOS's own screen/app/window picker. A floating bar shows the timer with **pause/resume**, **mic** and **camera** toggles and **stop**; paused parts are cut from the video. OpenFlo labels who said what (You, Speaker 1, Speaker 2…), reads the text on screen, and writes a summary, key points, action items and decisions, all on your Mac. Recordings go to `~/Movies/OpenFlo` (changeable).
 - 📖 **Dictionary**: names, brands and jargon spelled your way.
 - ✂️ **Snippets**: say "my calendar link" and get your full URL.
 - 🎨 **Styles**: Formal, Casual or Very casual.

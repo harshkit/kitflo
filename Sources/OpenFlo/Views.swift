@@ -341,8 +341,14 @@ struct SettingsPage: View {
                     perm("Accessibility (to read the key and paste)", ok: axTrusted) {
                         NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
                     }
+                    HStack {
+                        Text("Switch on in System Settings but still shown as off here?").font(.caption).foregroundStyle(.secondary)
+                        Spacer()
+                        Button("Fix permissions") { Permissions.fix() }
+                        Button("Restart OpenFlo") { RecorderCard.relaunch() }
+                    }
                     perm("Screen Recording (only for meeting notes)", ok: screenOK) {
-                        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
+                        if !CGRequestScreenCaptureAccess() { NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!) }
                     }
                 }.padding(8)
             }
