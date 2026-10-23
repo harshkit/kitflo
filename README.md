@@ -58,8 +58,9 @@ Meeting notes need **Screen Recording** permission (for system audio and video):
 - 🪄 **Command Mode**: select text, hold the key + `Ctrl` and say "make this more formal", "shorter" or "turn this into bullets". It's rewritten in place, on your Mac.
 - 🧠 **Learns your words**: fix a name or term right after Kitflo pastes it and it joins your Dictionary.
 - ⌨️ **Shortcuts**: `Esc` cancels, `⌃⌘V` pastes your last dictation again, `⌃⌘C` copies it. Optional open at login.
+- 🎤 **Pick your mic** (keep AirPods in high quality by dictating into the built-in mic), **search and delete history**, and an optional **press Enter after pasting** to send chat messages hands-free.
 - 🔉 **Soft-voice boost**: automatic gain picks up quiet or distant speech.
-- 📊 **History and stats**: streak, words per week, average WPM. See the raw transcript or the cleaned text.
+- 📊 **History and stats**: searchable history, streak, words per week, average WPM. See the raw transcript or the cleaned text.
 - 🌍 **12 languages**, including English (India, US, UK, Australia), Spanish, French, German, Italian, Portuguese, Japanese, Korean and Chinese.
 - 🔒 **Private by design**: no telemetry, no servers, no account. Audio is never saved. See [PRIVACY.md](PRIVACY.md).
 

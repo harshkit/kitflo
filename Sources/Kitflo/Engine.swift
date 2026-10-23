@@ -1,5 +1,6 @@
 import AppKit
 import AVFoundation
+import CoreAudio
 import FluidAudio
 import Observation
 import Speech
@@ -253,10 +254,16 @@ final class Recorder {
     private var envelope: Float = 0.05
     var onLevel: ((Float) -> Void)?
 
+    /// Microphones you can pick in Settings (built-in, USB, AirPods…).
+    static var microphones: [AVCaptureDevice] {
+        AVCaptureDevice.DiscoverySession(deviceTypes: [.microphone], mediaType: .audio, position: .unspecified).devices
+    }
+
     func start(into session: Transcription) throws {
         let outFmt = session.format
         frames = 0; peak = 0; envelope = 0.05
         let input = engine.inputNode
+        use(Store.shared.s.micID, on: input)
         let inFmt = input.outputFormat(forBus: 0)
         guard let conv = AVAudioConverter(from: inFmt, to: outFmt) else { throw NSError(domain: "Kitflo", code: 1) }
         input.installTap(onBus: 0, bufferSize: 1024, format: inFmt) { [weak self] buf, _ in
@@ -300,6 +307,25 @@ final class Recorder {
             sum += v * v
         }
         return (pk, sum)
+    }
+
+    /// Points the engine at the chosen mic; a missing or unplugged one falls back to the system default.
+    private func use(_ uid: String?, on input: AVAudioInputNode) {
+        var id = AudioDeviceID(0)
+        if let uid, Self.microphones.contains(where: { $0.uniqueID == uid }) {
+            var cf = uid as CFString, size = UInt32(MemoryLayout<AudioDeviceID>.size)
+            var addr = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyTranslateUIDToDevice,
+                                                  mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
+            AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &addr, UInt32(MemoryLayout<CFString>.size), &cf, &size, &id)
+        }
+        if id == 0 {
+            var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+            var addr = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDefaultInputDevice,
+                                                  mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
+            AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &addr, 0, nil, &size, &id)
+        }
+        guard let unit = input.audioUnit, id != 0 else { return }
+        AudioUnitSetProperty(unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0, &id, UInt32(MemoryLayout<AudioDeviceID>.size))
     }
 
     func stop() {
@@ -521,7 +547,10 @@ enum Post {
                 guard !final.isEmpty else { return }
                 Paster.paste(final, into: target) { ok in
                     if !ok { self.show(AXIsProcessTrusted() ? "Copied, press ⌘V" : "Copied, allow Accessibility to auto-paste") }
-                    else if s.learnWords { Learner.watch() }
+                    else {
+                        if s.pressEnter { DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { Paster.key(36, flags: []) } }   // Return
+                        if s.learnWords { Learner.watch() }
+                    }
                 }
                 store.s.history.insert(Entry(raw: raw, text: final, app: app, seconds: secs), at: 0)
             }

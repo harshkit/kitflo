@@ -156,6 +156,7 @@ import Vision
             cfg.capturesAudio = systemOn
             cfg.excludesCurrentProcessAudio = true
             cfg.captureMicrophone = micOn
+            if let id = Store.shared.s.micID { cfg.microphoneCaptureDeviceID = id }
             cfg.sampleRate = 48000
             cfg.channelCount = 2
             if mode == .audio {

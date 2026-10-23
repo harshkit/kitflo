@@ -101,6 +101,11 @@ struct Title: View {
 
 struct HomePage: View {
     let store = Store.shared
+    @State private var query = ""
+    private var history: [Entry] {
+        query.isEmpty ? Array(store.s.history.prefix(200))
+            : store.s.history.filter { $0.text.localizedCaseInsensitiveContains(query) || $0.raw.localizedCaseInsensitiveContains(query) || $0.app.localizedCaseInsensitiveContains(query) }
+    }
     var body: some View {
         VStack(alignment: .leading, spacing: 22) {
             Title(text: "Welcome back, \(NSFullUserName().split(separator: " ").first.map(String.init) ?? "there")",
@@ -111,13 +116,20 @@ struct HomePage: View {
                 Stat(value: "\(store.weekWords)", label: "words this week", icon: "text.word.spacing")
                 Stat(value: "\(store.wpm)", label: "avg WPM", icon: "speedometer")
             }
-            Text("History").font(.headline).padding(.top, 6)
+            HStack {
+                Text("History").font(.headline)
+                Spacer()
+                TextField("Search", text: $query).textFieldStyle(.roundedBorder).frame(width: 220)
+            }.padding(.top, 6)
+            if !query.isEmpty && history.isEmpty {
+                Text("No dictations match “\(query)”.").foregroundStyle(.secondary).padding(.vertical, 30)
+            }
             if store.s.history.isEmpty {
                 Text("Nothing yet. Put your cursor in any text field, hold the key and talk.")
                     .foregroundStyle(.secondary).padding(.vertical, 30)
             }
             LazyVStack(spacing: 0) {
-                ForEach(store.s.history.prefix(200)) { e in
+                ForEach(history) { e in
                     HistoryRow(e: e)
                     Divider()
                 }
@@ -159,6 +171,8 @@ struct HistoryRow: View {
                 NSPasteboard.general.setString(e.text, forType: .string)
             } label: { Image(systemName: "doc.on.doc") }
                 .buttonStyle(.borderless).help("Copy")
+            Button { Store.shared.s.history.removeAll { $0.id == e.id } } label: { Image(systemName: "trash") }
+                .buttonStyle(.borderless).help("Delete")
         }
         .padding(.vertical, 12)
     }
@@ -387,7 +401,14 @@ struct SettingsPage: View {
                          ? "NVIDIA Parakeet on the Neural Engine. One-time 0.7 GB download; Apple is used until it finishes, and for Japanese, Korean and Chinese."
                          : "No download. Often mishears names and tech words from your Dictionary.")
                         .font(.caption).foregroundStyle(.secondary)
+                    Picker("Microphone", selection: $store.s.micID) {
+                        Text("System default").tag(String?.none)
+                        ForEach(Recorder.microphones, id: \.uniqueID) { Text($0.localizedName).tag(Optional($0.uniqueID)) }
+                    }
+                    Text("Tip: with AirPods, pick the built-in mic so your audio stays in high quality while you dictate.")
+                        .font(.caption).foregroundStyle(.secondary)
                     Toggle("Sound effects", isOn: $store.s.sounds)
+                    Toggle("Press Enter after pasting (sends chat messages)", isOn: $store.s.pressEnter)
                     Toggle("Learn words from your corrections", isOn: $store.s.learnWords)
                     Text("Fix a name or term right after Kitflo pastes it and it joins your Dictionary. Checked on this Mac only, never in password fields.")
                         .font(.caption).foregroundStyle(.secondary)

@@ -103,6 +103,8 @@ struct Saved: Codable {
     var style: Style = .casual          // also the tone for "Other" apps
     var appStyles: [AppKind: Style] = [:]   // unset kinds use `style`
     var learnWords = true
+    var micID: String?              // AVCaptureDevice uniqueID; nil = the system's default input
+    var pressEnter = false          // press Return after pasting (sends chat messages)
     var hotkey: Hotkey = .fn
     var aiCleanup = true
     var language = "en-IN"
@@ -123,6 +125,8 @@ struct Saved: Codable {
         style = try c.decodeIfPresent(Style.self, forKey: .style) ?? .casual
         appStyles = try c.decodeIfPresent([AppKind: Style].self, forKey: .appStyles) ?? [:]
         learnWords = try c.decodeIfPresent(Bool.self, forKey: .learnWords) ?? true
+        micID = try c.decodeIfPresent(String.self, forKey: .micID)
+        pressEnter = try c.decodeIfPresent(Bool.self, forKey: .pressEnter) ?? false
         hotkey = try c.decodeIfPresent(Hotkey.self, forKey: .hotkey) ?? .fn
         aiCleanup = try c.decodeIfPresent(Bool.self, forKey: .aiCleanup) ?? true
         language = try c.decodeIfPresent(String.self, forKey: .language) ?? "en-IN"
