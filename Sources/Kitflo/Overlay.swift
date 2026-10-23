@@ -48,6 +48,7 @@ struct PillView: View {
                             Image(systemName: "xmark").font(.system(size: 10, weight: .bold)).foregroundStyle(.white.opacity(0.7))
                         }.buttonStyle(.plain)
                     }
+                    if flow.command { Image(systemName: "wand.and.stars").font(.system(size: 11, weight: .semibold)).foregroundStyle(.white) }
                     Bars(levels: flow.levels)
                     if flow.locked { Circle().fill(.red).frame(width: 7, height: 7) }
                 case .thinking:
@@ -71,7 +72,7 @@ struct PillView: View {
     private var width: CGFloat {
         switch flow.phase {
         case .idle: MeetingRecorder.shared.recording ? 70 : 44
-        case .listening: flow.locked ? 172 : 140
+        case .listening: (flow.locked ? 172 : 140) + (flow.command ? 20 : 0)
         case .thinking: 84
         }
     }

@@ -78,32 +78,57 @@ enum LLM {
         if !vocabulary.isEmpty {
             system += "\n- The speaker's own words: \(vocabulary.joined(separator: ", ")). Speech recognition often mishears them as similar-sounding phrases; when the context fits, write the speaker's word instead, spelled exactly."
         }
+        // Per-app tone changes this prompt between apps; re-reading it costs nothing measurable on an M2 (~0.35 s either way).
         system += "\n- Tone: \(style.rawValue). \(style.hint)\nOutput only the cleaned text."
-        // ponytail: app name left out of the prompt so the cached prefix survives app switches; add per-app tone if wanted.
         var messages = [["role": "system", "content": system]]
         for (a, b) in shots {
             messages.append(["role": "user", "content": "<transcript>\(a)</transcript>"])
             messages.append(["role": "assistant", "content": b])
         }
         messages.append(["role": "user", "content": "<transcript>\(raw)</transcript>"])
-        let payload: [String: Any] = ["messages": messages, "temperature": 0, "max_tokens": raw.count / 2 + 64, "cache_prompt": true]
+        guard let out = await chat(messages, maxTokens: raw.count / 2 + 64, timeout: 6) else { return raw }
+        let clean = out.replacingOccurrences(of: #"</?transcript>"#, with: "", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        // Guard against the small model answering instead of cleaning.
+        return clean.isEmpty || clean.count > raw.count * 2 + 40 ? raw : clean
+    }
+
+    /// Command Mode: applies a spoken instruction ("make this more formal") to the selected text.
+    /// Instruction first, and no example that ends in bullets, or the 1.5B model turns every edit into a list or a letter.
+    static func edit(_ text: String, instruction: String) async -> String? {
+        let shots = [
+            ("make this a bulleted list", "Buy milk, call the bank, and book flights.", "- Buy milk\n- Call the bank\n- Book flights"),
+            ("make this more formal", "hey guys the meeting got moved to 3, see u there", "Hello everyone, the meeting has been moved to 3 PM. See you there."),
+            ("make it shorter", "So basically what happened is that the server ran out of memory last night and that's why the site was down for about an hour.",
+             "The server ran out of memory last night, so the site was down for about an hour."),
+        ]
+        var messages = [["role": "system", "content": "You rewrite a piece of text the way the user asks. Output only the rewritten text. It is a snippet, not a letter: never add a greeting, sign-off, name or placeholder that was not there."]]
+        for (i, a, b) in shots {
+            messages.append(["role": "user", "content": "\(i):\n<text>\(a)</text>"])
+            messages.append(["role": "assistant", "content": b])
+        }
+        let ask = instruction.trimmingCharacters(in: CharacterSet(charactersIn: ".!? "))
+        messages.append(["role": "user", "content": "\(ask):\n<text>\(text)</text>"])
+        guard let out = await chat(messages, maxTokens: text.count / 2 + 200, timeout: 20) else { return nil }
+        let clean = out.replacingOccurrences(of: #"</?text>"#, with: "", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return clean.isEmpty ? nil : clean
+    }
+
+    static func chat(_ messages: [[String: String]], maxTokens: Int, timeout: Double) async -> String? {
+        let payload: [String: Any] = ["messages": messages, "temperature": 0, "max_tokens": maxTokens, "cache_prompt": true]
         var req = URLRequest(url: url.appending(path: "v1/chat/completions"))
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
         req.httpBody = try? JSONSerialization.data(withJSONObject: payload)
-        req.timeoutInterval = 6
+        req.timeoutInterval = timeout
         guard let (d, _) = try? await URLSession.shared.data(for: req) else {
             if port == 8179 { Task { await heal() } }
-            return raw
+            return nil
         }
-        guard let j = try? JSONSerialization.jsonObject(with: d) as? [String: Any],
-              let msg = ((j["choices"] as? [[String: Any]])?.first?["message"] as? [String: Any])?["content"] as? String
-        else { return raw }
-        let out = msg.replacingOccurrences(of: #"</?transcript>"#, with: "", options: .regularExpression)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        // Guard against the small model answering instead of cleaning.
-        return out.isEmpty || out.count > raw.count * 2 + 40 ? raw : out
+        return ((((try? JSONSerialization.jsonObject(with: d)) as? [String: Any])?["choices"] as? [[String: Any]])?
+            .first?["message"] as? [String: Any])?["content"] as? String
     }
 }
 
@@ -315,6 +340,26 @@ enum Post {
         }
     }
 
+    /// Words you fixed by hand after a paste ("kubernetis" → "Kubernetes"), worth adding to the Dictionary.
+    /// Only small, similar-looking swaps count, and only names or jargon: fixing "their" to "there" teaches nothing.
+    static func learned(_ before: String, _ after: String) -> [String] {
+        let words = { (s: String) in s.split { !$0.isLetter && !$0.isNumber && $0 != "-" && $0 != "'" }.map(String.init) }
+        var removed = words(before), added = [String]()
+        for w in words(after) {
+            if let i = removed.firstIndex(of: w) { removed.remove(at: i) } else { added.append(w) }
+        }
+        guard (1...3).contains(removed.count), (1...3).contains(added.count) else { return [] }  // a rewrite, not a fix
+        return added.filter { a in
+            let key = letters(a)
+            guard key.count >= 3, let r = removed.first(where: { distance(letters($0), key) <= max(1, key.count / 4) }) else { return false }
+            let mixed = a.dropFirst().contains(where: \.isUppercase) || a.contains(where: \.isNumber)   // GitHub, iOS, M2
+            let known = NSSpellChecker.shared.checkSpelling(of: a, startingAt: 0, language: "en", wrap: false,
+                                                            inSpellDocumentWithTag: 0, wordCount: nil).location == NSNotFound
+            if letters(r) == key && known && !mixed { return false }   // just capitalizing an ordinary word ("monday" → "Monday")
+            return mixed || !known || a.first?.isUppercase == true      // names, brands, jargon
+        }
+    }
+
     static func letters(_ s: String) -> String { s.lowercased().filter { $0.isLetter || $0.isNumber } }
 
     static func distance(_ a: String, _ b: String) -> Int {
@@ -339,6 +384,11 @@ enum Post {
         precondition(applyVocabulary("Raul is here", v) == "Raul is here") // short words need an exact match
         precondition(applySnippets("Here is my calendar link.", [Snippet(trigger: "my calendar link", expansion: "cal.com/harsh")]) == "Here is cal.com/harsh.")
         precondition(distance("kitten", "sitting") == 3)
+        precondition(learned("push it to github and kubernetis now", "push it to GitHub and Kubernetes now") == ["GitHub", "Kubernetes"])
+        precondition(learned("I think their right", "I think they're right").isEmpty)    // ordinary words
+        precondition(learned("monday works", "Monday works").isEmpty)                   // case fix on a known word
+        precondition(learned("ship the deploy to kubernetes", "Totally different text here instead").isEmpty)
+        precondition(AppKind.of("com.tinyspeck.slackmacgap") == .work && AppKind.of("com.apple.mail") == .email && AppKind.of(nil) == .other)
         print("selftest ok")
     }
 }
@@ -350,6 +400,7 @@ enum Post {
     enum Phase { case idle, listening, thinking }
     var phase = Phase.idle
     var locked = false
+    var command = false   // Command Mode: hotkey + Ctrl edits the selected text instead of dictating
     var ready = false
     var levels = [Float](repeating: 0, count: 22)
     var lastError: String?
@@ -409,6 +460,8 @@ enum Post {
         guard phase == .idle, let session = next else { return }
         target = NSWorkspace.shared.frontmostApplication
         app = target?.localizedName ?? "an app"
+        command = false
+        Learner.stop()
         do { try recorder.start(into: session) } catch { lastError = "Microphone unavailable"; return }
         next = nil
         current = session
@@ -438,6 +491,7 @@ enum Post {
         Task { await session.cancel() }
         current = nil
         locked = false
+        command = false
         phase = .idle
     }
 
@@ -450,13 +504,15 @@ enum Post {
         guard secs > 0.35, recorder.peak > 0.004 else { phase = .idle; Task { await session.cancel() }; return }
         phase = .thinking
         sound("Pop")
-        let s = store.s, app = app, target = target
+        let s = store.s, app = app, target = target, command = command
+        let style = s.style(for: AppKind.of(target?.bundleIdentifier))
         Task {
             let raw = (try? await session.finish()) ?? ""
+            if command { await edit(Post.applyVocabulary(raw, s.words), in: target); return }
             var text = Post.applyVocabulary(raw, s.words)
             let isSnippet = s.snippets.contains { Post.letters($0.trigger) == Post.letters(raw) }
             if s.aiCleanup, !isSnippet, raw.split(separator: " ").count > 2 {
-                text = Post.applyVocabulary(await LLM.polish(text, app: app, style: s.style, vocabulary: s.words), s.words)
+                text = Post.applyVocabulary(await LLM.polish(text, app: app, style: style, vocabulary: s.words), s.words)
             }
             text = Post.applySnippets(text, s.snippets)
             let final = text
@@ -465,9 +521,43 @@ enum Post {
                 guard !final.isEmpty else { return }
                 Paster.paste(final, into: target) { ok in
                     if !ok { self.show(AXIsProcessTrusted() ? "Copied, press ⌘V" : "Copied, allow Accessibility to auto-paste") }
+                    else if s.learnWords { Learner.watch() }
                 }
                 store.s.history.insert(Entry(raw: raw, text: final, app: app, seconds: secs), at: 0)
             }
+        }
+    }
+
+    /// Command Mode: copy the selection, rewrite it with the spoken instruction, paste over it.
+    private func edit(_ instruction: String, in target: NSRunningApplication?) async {
+        await Paster.modifiersUp()   // Ctrl still down would turn our ⌘C into ⌃⌘C
+        guard !instruction.isEmpty, let selection = await Paster.copySelection(from: target) else {
+            await MainActor.run { phase = .idle; show("Select some text first, then hold \(store.s.hotkey == .fn ? "fn" : store.s.hotkey.rawValue) + Ctrl") }
+            return
+        }
+        let result = await LLM.edit(selection, instruction: instruction)
+        await MainActor.run {
+            phase = .idle
+            guard let result else { show("Couldn't edit that, try again"); return }
+            Paster.paste(result, into: target) { _ in }
+        }
+        // The edit prompt pushed dictation's prompt out of the model's cache; warm it again while you read.
+        _ = await LLM.polish("um hello there", app: "Notes", style: store.s.style, vocabulary: store.s.words)
+    }
+
+    /// ⌃⌘V pastes your last dictation again, ⌃⌘C copies it.
+    func pasteLast(copyOnly: Bool) {
+        guard let last = store.s.history.first?.text else { show("Nothing dictated yet"); return }
+        if copyOnly {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(last, forType: .string)
+            show("Copied last dictation")
+            return
+        }
+        let target = NSWorkspace.shared.frontmostApplication
+        Task {
+            await Paster.modifiersUp()
+            await MainActor.run { Paster.paste(last, into: target) { ok in if ok && self.store.s.learnWords { Learner.watch() } } }
         }
     }
 
@@ -525,6 +615,40 @@ enum Post {
 // MARK: - Typing into the focused app
 
 enum Paster {
+    /// Waits (up to 1.5 s) until Ctrl, ⌘ and ⌥ are let go, so the keys we send aren't mixed with the ones you hold.
+    static func modifiersUp() async {
+        for _ in 0..<30 {
+            let f = CGEventSource.flagsState(.combinedSessionState)
+            if f.intersection([.maskControl, .maskCommand, .maskAlternate]).isEmpty { return }
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+    }
+
+    /// Sends ⌘C and returns the selected text, then puts your clipboard back. Nil when nothing is selected.
+    @MainActor static func copySelection(from target: NSRunningApplication?) async -> String? {
+        guard AXIsProcessTrusted() else { return nil }
+        if let target, target != NSWorkspace.shared.frontmostApplication {
+            target.activate()
+            try? await Task.sleep(for: .milliseconds(150))
+        }
+        let pb = NSPasteboard.general, old = pb.string(forType: .string), count = pb.changeCount
+        key(8, flags: .maskCommand)   // ⌘C
+        for _ in 0..<10 where pb.changeCount == count { try? await Task.sleep(for: .milliseconds(50)) }
+        guard pb.changeCount != count, let text = pb.string(forType: .string), !text.isEmpty else { return nil }
+        pb.clearContents()
+        if let old { pb.setString(old, forType: .string) }
+        return text
+    }
+
+    static func key(_ code: CGKeyCode, flags: CGEventFlags) {
+        let src = CGEventSource(stateID: .hidSystemState)
+        for down in [true, false] {
+            let e = CGEvent(keyboardEventSource: src, virtualKey: code, keyDown: down)
+            e?.flags = flags
+            e?.post(tap: .cghidEventTap)
+        }
+    }
+
     /// Puts text in the field you were typing in. If it can't, the text stays on the clipboard.
     static func paste(_ text: String, into target: NSRunningApplication?, done: @escaping (Bool) -> Void) {
         let pb = NSPasteboard.general
@@ -553,5 +677,46 @@ enum Paster {
                 pb.setString(old, forType: .string)
             }
         }
+    }
+}
+
+// MARK: - Dictionary auto-learn
+
+/// After a paste, watches the text field for ~30 s. If you fix a name or term Kitflo got wrong, that word joins
+/// your Dictionary. Reads the field on this Mac only; never password fields; nothing but the learned word is kept.
+enum Learner {
+    private static var task: Task<Void, Never>?
+
+    static func stop() { task?.cancel() }
+
+    @MainActor static func watch() {
+        task?.cancel()
+        let sys = AXUIElementCreateSystemWide()
+        guard let field = attr(sys, kAXFocusedUIElementAttribute).map({ $0 as! AXUIElement }),
+              attr(field, kAXSubroleAttribute) as? String != kAXSecureTextFieldSubrole else { return }
+        task = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(600))   // let the paste land
+            guard let before = attr(field, kAXValueAttribute) as? String, before.count < 50_000 else { return }
+            var found: [String] = []
+            for _ in 0..<30 where !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                guard let now = attr(sys, kAXFocusedUIElementAttribute), CFEqual(now, field),
+                      let after = attr(field, kAXValueAttribute) as? String,
+                      after.count >= before.count / 2 else { break }   // sending a message empties the field: keep the last fix seen
+                found = Post.learned(before, after)   // the latest state wins, so a half-typed word ("GitHu") never sticks
+            }
+            let store = Store.shared
+            let new = found.filter { w in !store.s.words.contains { $0.caseInsensitiveCompare(w) == .orderedSame } }
+            guard !new.isEmpty else { return }
+            store.s.words += new
+            Flow.shared.refresh()
+            Flow.shared.show("Added \(new.map { "“\($0)”" }.joined(separator: ", ")) to Dictionary")
+            Log.write("dictionary learned \(new.count) word(s)")
+        }
+    }
+
+    private static func attr(_ el: AXUIElement, _ name: String) -> CFTypeRef? {
+        var v: CFTypeRef?
+        return AXUIElementCopyAttributeValue(el, name as CFString, &v) == .success ? v : nil
     }
 }

@@ -1,5 +1,6 @@
 import AppKit
 import AVFoundation
+import ServiceManagement
 import SwiftUI
 
 enum Page: String, CaseIterable, Identifiable {
@@ -287,11 +288,16 @@ struct SnippetsPage: View {
 
 struct StylePage: View {
     @Bindable var store = Store.shared
+    @State private var kind = AppKind.other
+    private var selected: Style { store.s.style(for: kind) }
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Title(text: "Style", sub: "How your words should read once Kitflo tidies them up.")
+            Title(text: "Style", sub: "How your words should read once Kitflo tidies them up. Pick a tone for each kind of app.")
+            Picker("Apps", selection: $kind) { ForEach(AppKind.allCases) { Text($0.rawValue).tag($0) } }
+                .pickerStyle(.segmented).labelsHidden()
+            Text(appsHint).font(.caption).foregroundStyle(.secondary)
             ForEach(Style.allCases) { st in
-                Button { store.s.style = st } label: {
+                Button { if kind == .other { store.s.style = st } else { store.s.appStyles[kind] = st } } label: {
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(st.rawValue).font(.headline)
@@ -299,15 +305,23 @@ struct StylePage: View {
                             Text(example(st)).font(.system(.callout, design: .serif)).padding(.top, 4)
                         }
                         Spacer()
-                        Image(systemName: store.s.style == st ? "checkmark.circle.fill" : "circle").font(.title3)
+                        Image(systemName: selected == st ? "checkmark.circle.fill" : "circle").font(.title3)
                     }
                     .padding(16)
                     .background(RoundedRectangle(cornerRadius: 12).fill(Color.paper))
-                    .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(store.s.style == st ? Color.primary : .clear, lineWidth: 1.5))
+                    .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(selected == st ? Color.primary : .clear, lineWidth: 1.5))
                     .contentShape(Rectangle())
                 }.buttonStyle(.plain)
             }
             Toggle("AI cleanup (removes ums, fixes grammar, applies corrections)", isOn: $store.s.aiCleanup).padding(.top, 8)
+        }
+    }
+    private var appsHint: String {
+        switch kind {
+        case .messages: "Messages, WhatsApp, Telegram, Signal, Messenger, Discord"
+        case .work: "Slack and Microsoft Teams"
+        case .email: "Mail, Outlook, Spark, Superhuman, Mimestream, Airmail"
+        case .other: "Every other app, including web browsers"
         }
     }
     private func example(_ s: Style) -> String {
@@ -374,7 +388,27 @@ struct SettingsPage: View {
                          : "No download. Often mishears names and tech words from your Dictionary.")
                         .font(.caption).foregroundStyle(.secondary)
                     Toggle("Sound effects", isOn: $store.s.sounds)
+                    Toggle("Learn words from your corrections", isOn: $store.s.learnWords)
+                    Text("Fix a name or term right after Kitflo pastes it and it joins your Dictionary. Checked on this Mac only, never in password fields.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Toggle("Open Kitflo at login", isOn: Binding(
+                        get: { SMAppService.mainApp.status == .enabled },
+                        set: { on in
+                            do { try on ? SMAppService.mainApp.register() : SMAppService.mainApp.unregister() }
+                            catch { Log.write("login item: \(error.localizedDescription)") }
+                        }))
                 }.padding(8)
+            }
+            GroupBox("Shortcuts") {
+                let k = store.s.hotkey == .fn ? "fn" : store.s.hotkey.rawValue
+                Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 8) {
+                    GridRow { Text("Hold \(k)").fontWeight(.medium); Text("Dictate, let go to paste") }
+                    GridRow { Text("Tap \(k)").fontWeight(.medium); Text("Hands-free; tap again to finish") }
+                    GridRow { Text("Hold \(k) + Ctrl").fontWeight(.medium); Text("Command Mode: select text, then say “make this formal”, “shorter”, “translate to Hindi”") }
+                    GridRow { Text("Esc").fontWeight(.medium); Text("Cancel dictation") }
+                    GridRow { Text("⌃⌘V").fontWeight(.medium); Text("Paste your last dictation again") }
+                    GridRow { Text("⌃⌘C").fontWeight(.medium); Text("Copy your last dictation") }
+                }.font(.callout).frame(maxWidth: .infinity, alignment: .leading).padding(8)
             }
             GroupBox("Engine") {
                 VStack(alignment: .leading, spacing: 6) {

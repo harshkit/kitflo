@@ -111,8 +111,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let g = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged, handler: handler) { monitors.append(g) }
         if let l = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged, handler: { handler($0); return $0 }) { monitors.append(l) }
         // Any other key while the hotkey is held means a shortcut (e.g. ⌥← to jump words), not dictation: cancel.
-        let typed: (NSEvent) -> Void = { [weak self] _ in
-            guard let self, self.keyIsDown, Flow.shared.phase == .listening, !Flow.shared.locked else { return }
+        // Esc cancels too, hands-free included. ⌃⌘V pastes the last dictation again, ⌃⌘C copies it.
+        let typed: (NSEvent) -> Void = { [weak self] e in
+            guard let self else { return }
+            let mods = e.modifierFlags.intersection([.control, .command, .option, .shift])
+            if mods == [.control, .command], !self.keyIsDown, e.keyCode == 9 || e.keyCode == 8 {
+                Flow.shared.pasteLast(copyOnly: e.keyCode == 8); return
+            }
+            guard Flow.shared.phase == .listening, (self.keyIsDown && !Flow.shared.locked) || e.keyCode == 53 else { return }
             Flow.shared.cancel()
         }
         if let g = NSEvent.addGlobalMonitorForEvents(matching: .keyDown, handler: typed) { monitors.append(g) }
@@ -130,11 +136,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func flagsChanged(_ e: NSEvent) {
         let key = Store.shared.s.hotkey
+        // Ctrl with the hotkey (before or during the hold) switches to Command Mode: edit the selected text by voice.
+        if keyIsDown, e.modifierFlags.contains(.control), Flow.shared.phase == .listening { Flow.shared.command = true }
         guard e.keyCode == key.keyCode else { return }
         let down = key.isDown(UInt64(e.modifierFlags.rawValue))
         guard down != keyIsDown else { return }
         keyIsDown = down
-        if down { overlay.reposition(); Flow.shared.keyDown() } else { Flow.shared.keyUp() }
+        if down {
+            overlay.reposition(); Flow.shared.keyDown()
+            if e.modifierFlags.contains(.control), Flow.shared.phase == .listening { Flow.shared.command = true }
+        } else { Flow.shared.keyUp() }
     }
 
     @objc func newNote() {

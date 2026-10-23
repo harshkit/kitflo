@@ -29,6 +29,22 @@ enum Style: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+/// Where you're typing, so each kind of app can have its own tone (like Wispr Flow's per-app styles).
+enum AppKind: String, Codable, CaseIterable, Identifiable {
+    case messages = "Messages", work = "Work chat", email = "Email", other = "Other"
+    var id: String { rawValue }
+    static func of(_ bundleID: String?) -> AppKind {
+        switch bundleID ?? "" {
+        case "com.apple.MobileSMS", "net.whatsapp.WhatsApp", "ru.keepcoder.Telegram", "org.telegram.desktop",
+             "org.whispersystems.signal-desktop", "com.facebook.archon", "com.hnc.Discord": .messages
+        case "com.tinyspeck.slackmacgap", "com.microsoft.teams2", "com.microsoft.teams": .work
+        case "com.apple.mail", "com.microsoft.Outlook", "com.readdle.smartemail-Mac", "com.superhuman.electron",
+             "com.mimestream.Mimestream", "it.bloop.airmail2": .email
+        default: .other
+        }
+    }
+}
+
 enum Hotkey: String, Codable, CaseIterable, Identifiable {
     case fn = "fn (Globe)", rightOption = "Right ⌥ Option", rightCommand = "Right ⌘ Command"
     var id: String { rawValue }
@@ -84,7 +100,9 @@ struct Saved: Codable {
     var meetings: [Meeting] = []
     var recordingsFolder: String?   // nil = ~/Movies/Kitflo
     var recordMode: RecordMode = .screen
-    var style: Style = .casual
+    var style: Style = .casual          // also the tone for "Other" apps
+    var appStyles: [AppKind: Style] = [:]   // unset kinds use `style`
+    var learnWords = true
     var hotkey: Hotkey = .fn
     var aiCleanup = true
     var language = "en-IN"
@@ -103,12 +121,16 @@ struct Saved: Codable {
         recordingsFolder = try c.decodeIfPresent(String.self, forKey: .recordingsFolder)
         recordMode = try c.decodeIfPresent(RecordMode.self, forKey: .recordMode) ?? .screen
         style = try c.decodeIfPresent(Style.self, forKey: .style) ?? .casual
+        appStyles = try c.decodeIfPresent([AppKind: Style].self, forKey: .appStyles) ?? [:]
+        learnWords = try c.decodeIfPresent(Bool.self, forKey: .learnWords) ?? true
         hotkey = try c.decodeIfPresent(Hotkey.self, forKey: .hotkey) ?? .fn
         aiCleanup = try c.decodeIfPresent(Bool.self, forKey: .aiCleanup) ?? true
         language = try c.decodeIfPresent(String.self, forKey: .language) ?? "en-IN"
         sounds = try c.decodeIfPresent(Bool.self, forKey: .sounds) ?? true
         engine = try c.decodeIfPresent(Engine.self, forKey: .engine) ?? .parakeet
     }
+
+    func style(for kind: AppKind) -> Style { kind == .other ? style : appStyles[kind] ?? style }
 }
 
 /// Plain-text diagnostics at ~/Library/Logs/Kitflo.log (permission states, recording start/stop, errors). No speech or text.

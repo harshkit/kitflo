@@ -54,7 +54,10 @@ Meeting notes need **Screen Recording** permission (for system audio and video):
 - 🗒️ **Meeting notes**: record audio, screen or camera and get who-said-what plus AI notes. See [Meeting notes](#-new-meeting-notes).
 - 📖 **Dictionary**: names, brands and jargon spelled your way.
 - ✂️ **Snippets**: say "my calendar link" and get your full URL.
-- 🎨 **Styles**: Formal, Casual or Very casual.
+- 🎨 **Styles per app**: Formal, Casual or Very casual, set separately for Messages, Work chat, Email and everything else.
+- 🪄 **Command Mode**: select text, hold the key + `Ctrl` and say "make this more formal", "shorter" or "turn this into bullets". It's rewritten in place, on your Mac.
+- 🧠 **Learns your words**: fix a name or term right after Kitflo pastes it and it joins your Dictionary.
+- ⌨️ **Shortcuts**: `Esc` cancels, `⌃⌘V` pastes your last dictation again, `⌃⌘C` copies it. Optional open at login.
 - 🔉 **Soft-voice boost**: automatic gain picks up quiet or distant speech.
 - 📊 **History and stats**: streak, words per week, average WPM. See the raw transcript or the cleaned text.
 - 🌍 **12 languages**, including English (India, US, UK, Australia), Spanish, French, German, Italian, Portuguese, Japanese, Korean and Chinese.
@@ -130,7 +133,7 @@ swift build -c release
 
 - [ ] Android keyboard + floating bubble
 - [x] Stronger speech engine option with custom-vocabulary boosting
-- [ ] Per-app tone
+- [x] Per-app tone
 - [ ] Signed and notarized builds
 
 ## Contributing
