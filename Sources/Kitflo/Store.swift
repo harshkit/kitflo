@@ -90,6 +90,9 @@ struct Saved: Codable {
     var language = "en-IN"
     var sounds = true
     var engine: Engine = .parakeet
+    var voiceID = ""                // Voice page: last voice ("" = default voice), language and quality preset
+    var voiceLanguage = "en"
+    var voicePreset = "balanced"
 
     init() {}
 
@@ -108,6 +111,9 @@ struct Saved: Codable {
         language = try c.decodeIfPresent(String.self, forKey: .language) ?? "en-IN"
         sounds = try c.decodeIfPresent(Bool.self, forKey: .sounds) ?? true
         engine = try c.decodeIfPresent(Engine.self, forKey: .engine) ?? .parakeet
+        voiceID = try c.decodeIfPresent(String.self, forKey: .voiceID) ?? ""
+        voiceLanguage = try c.decodeIfPresent(String.self, forKey: .voiceLanguage) ?? "en"
+        voicePreset = try c.decodeIfPresent(String.self, forKey: .voicePreset) ?? "balanced"
     }
 }
 

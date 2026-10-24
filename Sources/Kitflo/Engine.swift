@@ -24,7 +24,11 @@ enum LLM {
         try? kill.run(); kill.waitUntilExit()
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/opt/homebrew/bin/llama-server")
-        p.arguments = ["-m", model, "--host", "127.0.0.1", "--port", "\(port)", "-ngl", "99", "-c", "4096", "-fa", "on", "--parallel", "1", "--api-key", key, "--no-slots"]
+        p.arguments = ["-m", model, "--host", "127.0.0.1", "--port", "\(port)", "-ngl", "99", "-c", "4096", "-fa", "on", "--parallel", "1", "--no-slots"]
+        // Key goes in the environment, not argv: any local process can read argv with ps.
+        var env = ProcessInfo.processInfo.environment
+        env["LLAMA_API_KEY"] = key
+        p.environment = env
         p.standardOutput = FileHandle.nullDevice
         p.standardError = FileHandle.nullDevice
         try? p.run()

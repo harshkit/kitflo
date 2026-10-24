@@ -8,6 +8,15 @@ enum Main {
         migrateFromOpenFlo()
         let args = CommandLine.arguments
         if args.contains("--selftest") { Post.selfTest(); return }
+        if args.contains("--voice-selftest") {
+            Task { @MainActor in
+                let ok = await VoiceEngine.shared.selfTest()
+                VoiceEngine.shared.stop()
+                print(ok ? "PASS" : "FAIL")
+                exit(ok ? 0 : 1)
+            }
+            RunLoop.main.run()
+        }
         if args.contains("--record-test") {
             Task { await MeetingRecorder.shared.recordTest(); exit(0) }
             RunLoop.main.run()
@@ -66,6 +75,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.mainMenu = Self.mainMenu()
         overlay = OverlayPanel()
         Flow.shared.boot()
+        VoiceEngine.killStale()
+        VoiceEngine.shared.startIfEnabled()   // the voice engine otherwise starts when the Voice page opens
         AVCaptureDevice.requestAccess(for: .audio) { _ in }
         let trusted = AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary)
         installHotkey()
@@ -99,6 +110,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ n: Notification) {
         LLM.stop()
+        VoiceEngine.shared.stop()
         MeetingRecorder.shared.shutdown()   // never leave a screen/mic capture running after quit
     }
 

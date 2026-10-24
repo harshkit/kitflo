@@ -16,7 +16,7 @@ Hold <code>fn</code>, talk, let go and clean text appears in any app. Record a m
   <a href="https://github.com/harshkit/kitflo/stargazers"><img src="https://img.shields.io/github/stars/harshkit/kitflo?style=social" alt="GitHub stars"></a>
 </p>
 
-<p align="center"><a href="https://www.harshkit.com/apps/kitflo/">Website</a> · <a href="#install-one-line">Install</a> · <a href="#-new-meeting-notes">Meeting notes</a> · <a href="#features">Features</a> · <a href="PRIVACY.md">Privacy</a></p>
+<p align="center"><a href="https://www.harshkit.com/apps/kitflo/">Website</a> · <a href="#install-one-line">Install</a> · <a href="#-new-meeting-notes">Meeting notes</a> · <a href="#-new-voice-clone-speak-enhance">Voice</a> · <a href="#features">Features</a> · <a href="PRIVACY.md">Privacy</a></p>
 
 ---
 
@@ -46,12 +46,61 @@ Record a meeting, call, demo or anything on screen. Kitflo works out **who said 
 
 Meeting notes need **Screen Recording** permission (for system audio and video): **Notes tab → Allow Screen Recording**, turn Kitflo on, then **Restart Kitflo**.
 
+## 🆕 Voice: clone, speak, enhance
+
+A new **Voice** page with four tabs: **Speak · Voices · Enhance · API**. Clone your voice, make it read anything in 600+ languages and clean up recordings, all on your Mac.
+
+| | |
+|---|---|
+| ⚡ **Quick clone** | Record or drop in a clip of any length. Kitflo picks the best 3–10 s passage, writes the transcript and shows a **quality score** with tips |
+| 🎤 **Train my voice** | A guided 1–2 minute read-aloud. Kitflo tests up to 5 candidate passages and keeps the one that sounds most like you |
+| ✨ **Pro training** | Point Kitflo at a folder of your videos or audio (30+ min of only your voice). It keeps just your clean speech, fine-tunes a personal voice adapter on your Mac (about 1–2 h), then lets you pick the winner in a **blind A/B test** |
+| 🌐 **Auto language** | Mixed speech like Hinglish works: Kitflo detects the language from your text |
+| 🗣️ **Multiple voices** | Each voice holds **one sample per language** so the accent sounds native (e.g. an English and a Tamil sample) |
+| 🌍 **Speaks 600+ languages** | Including English, Hindi and Tamil. Long scripts are fine and numbers are read as words |
+| 🎚️ **Three presets** | **Fast**, **Balanced**, or **Studio**: 3 takes, keeps the one closest to your voice that says the words right |
+| 🎧 **Enhance** | Adobe-Podcast-style cleanup of any recording or video's audio. **Clean**: noise and echo removal plus podcast loudness (−16 LUFS). **Studio**: Clean plus EQ and compression. Before/after A/B toggle, then download |
+| 💾 **Download** | Speech as **WAV** or **M4A** |
+| 🔌 **Local API** | OpenAI-compatible, off by default, API key generated in Kitflo, listens only on this Mac |
+
+**Setup is one click** on the Voice page (**Set up**). Nothing is downloaded until you open Voice and click it: the Python engine (~2.5 GB), the voice model (3.3 GB) and, on your first clone, Whisper (1.6 GB). Voices are stored in `~/Library/Application Support/Kitflo/voices`.
+
+**Responsible use:** cloning requires ticking *"This is my voice, or I have the speaker's permission"*. Don't clone anyone without their consent. Generated audio is for **non-commercial use** (see [Licenses](#voice-engine-credits)).
+
+### Local API
+
+Turn it on in **Voice → API**, generate a key, and call it on `127.0.0.1:8180`:
+
+```bash
+curl http://127.0.0.1:8180/v1/audio/speech \
+  -H "Authorization: Bearer kf_YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{"input": "Hello from Kitflo", "voice": "my-voice", "response_format": "wav"}' -o hello.wav
+```
+
+```python
+from openai import OpenAI
+
+client = OpenAI(base_url="http://127.0.0.1:8180/v1", api_key="kf_YOUR_KEY")
+audio = client.audio.speech.create(model="kitflo", voice="my-voice", input="Hello from Kitflo", response_format="wav")
+audio.write_to_file("hello.wav")
+```
+
+| Endpoint | What it does |
+|---|---|
+| `POST /v1/audio/speech` | Text to speech in one of your voices |
+| `GET /v1/audio/voices` | List your voices and their languages |
+| `POST /v1/audio/enhance?level=clean` | Send raw audio, get cleaned WAV back (`clean` or `studio`) |
+
 ## Features
 
 - 🎙️ **Hold `fn` to talk, release to paste** into any app: Slack, Gmail, Notion, VS Code, ChatGPT, anything with a text box. **Tap `fn`** for hands-free mode.
 - ⚡ **Fast**: speech streams into the recognizer while you talk, so text appears **~0.6–1.0 s** after you let go (measured on an M2).
 - ✨ **AI cleanup, fully local**: removes filler words and stutters, keeps only your final version ("at 5, no wait, 6" → "at 6"), adds punctuation and turns spoken lists into numbered lists. It cleans up your questions; it never answers them.
 - 🗒️ **Meeting notes**: record audio, screen or camera and get who-said-what plus AI notes. See [Meeting notes](#-new-meeting-notes).
+- 🆕 **Voice cloning**: clone your voice from a short clip or a guided read-aloud, with one sample per language. See [Voice](#-new-voice-clone-speak-enhance).
+- 🔊 **Text-to-speech** in 600+ languages (Fast, Balanced, Studio), download as WAV or M4A.
+- 🎧 **Enhance**: Adobe-Podcast-style noise, echo and loudness cleanup for any recording.
+- 🔌 **Local, OpenAI-compatible API** for speech, voices and enhance. Off by default, localhost only.
 - 📖 **Dictionary**: names, brands and jargon spelled your way.
 - ✂️ **Snippets**: say "my calendar link" and get your full URL.
 - 🎨 **Styles**: Formal, Casual or Very casual.
@@ -92,6 +141,7 @@ On test clips with names and tech words from the Dictionary (GitHub, README, Cla
 - macOS 26 (Tahoe) or newer
 - Apple Silicon (M1 or newer)
 - ~1.6 GB free disk (cleanup model + speech model)
+- **Voice (optional):** ~8 GB more free disk, 16 GB RAM recommended
 
 ## Build from source
 
@@ -140,3 +190,16 @@ PRs welcome. See [CONTRIBUTING.md](CONTRIBUTING.md), the [Code of Conduct](CODE_
 ## License
 
 [MIT](LICENSE) © Harsh Sharma
+
+### Voice engine credits
+
+Kitflo's own code is MIT. The Voice feature runs these open-source components on your Mac:
+
+| Component | Used for | License |
+|---|---|---|
+| [OmniVoice](https://github.com/k2-fsa/OmniVoice) by k2-fsa | Voice cloning and speech | Code Apache-2.0; **model weights CC-BY-NC** |
+| DeepFilterNet | Enhance (noise and echo removal) | MIT / Apache-2.0 |
+| Whisper large-v3-turbo | Transcripts for clones | MIT |
+| SpeechBrain ECAPA | Voice matching | Apache-2.0 |
+
+⚠️ Because the OmniVoice weights are CC-BY-NC, **audio generated with Voice is for non-commercial use** only. This does not affect dictation or meeting notes.

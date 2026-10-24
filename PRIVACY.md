@@ -32,6 +32,14 @@ Everything below lives in `~/Library/Application Support/Kitflo/store.json`, rea
 
 You can clear history at any time in **Settings → Clear history**. Deleting that file, or the app, removes everything.
 
+## Voice (cloning, speech, enhance)
+
+- **On-device only.** Recordings, voice samples, text you have spoken aloud and enhanced audio are processed by local models on your Mac and never uploaded. The Voice engine is a local process that listens on `127.0.0.1` only.
+- **Stored on your Mac:** voices in `~/Library/Application Support/Kitflo/voices` (reference clip, transcript and name per language); generated and enhanced files in `~/Library/Application Support/Kitflo/voice-out`; temporary work files in `voice-tmp`. Delete a voice in the Voices tab, or delete these folders, to remove it.
+- **Local API:** off by default. When on, it binds to this Mac only (`127.0.0.1:8180`) and every request needs an API key generated in Kitflo (you can turn it off at any time). Other devices on your network cannot reach it.
+- **One-time downloads:** on **Set up** (and Whisper on your first clone) Kitflo downloads the Python engine and model files, about 2.5 GB + 3.3 GB + 1.6 GB, from Hugging Face and package hosts. Model and package files only; none of your audio, text or voices is sent. Nothing is downloaded until you open Voice and click Set up.
+- **Consent:** creating a voice requires ticking "This is my voice, or I have the speaker's permission". Only clone voices you have the right to use. Generated audio is for non-commercial use under the model's CC-BY-NC license.
+
 ## Permissions Kitflo asks for
 
 - **Microphone**: to hear you while the dictation key is held.
@@ -47,12 +55,14 @@ Kitflo does not send your audio, text or settings anywhere. The only network act
 
 - **Speaker model, one time**: the first meeting recording downloads a small speaker-recognition model (pyannote, via FluidAudio) from Hugging Face. Model files only; nothing of yours is sent.
 - **Speech models, one time**: the first time you dictate, Kitflo downloads the Parakeet speech model files (~570 MB) from Hugging Face into `~/Library/Application Support/FluidAudio/`. If you use Apple's engine, macOS downloads Apple's model for your language from Apple instead, under [Apple's privacy policy](https://www.apple.com/legal/privacy/). These downloads fetch model files only; none of your audio, text or settings is sent. Recognition then runs offline.
+- **Voice setup, one time**: if you click Set up on the Voice page, the Voice engine and its models are downloaded (see [Voice](#voice-cloning-speech-enhance)). Not downloaded otherwise.
 - **Setup downloads you run yourself**: Homebrew (`llama.cpp`) and the Qwen model file from Hugging Face, per the README. These happen once, from your terminal, and are covered by those services' own policies.
 
 ## Third-party components
 
 - **NVIDIA Parakeet TDT 0.6B v3** (CC-BY-4.0), run through **FluidAudio** (Apache 2.0) on the Neural Engine, locally.
 - **Apple SpeechAnalyzer**: part of macOS, runs on-device.
+- **Voice:** **OmniVoice** by k2-fsa (code Apache-2.0, model weights CC-BY-NC), **DeepFilterNet** (MIT/Apache-2.0), **Whisper large-v3-turbo** (MIT) and **SpeechBrain ECAPA** (Apache-2.0), all run locally.
 - **llama.cpp** (MIT) and **Qwen2.5-1.5B-Instruct** (Apache 2.0): run locally. No data is sent to their authors.
 
 ## Children

@@ -3,12 +3,13 @@ import AVFoundation
 import SwiftUI
 
 enum Page: String, CaseIterable, Identifiable {
-    case home = "Home", notes = "Notes", dictionary = "Dictionary", snippets = "Snippets", style = "Style", settings = "Settings"
+    case home = "Home", notes = "Notes", voice = "Voice", dictionary = "Dictionary", snippets = "Snippets", style = "Style", settings = "Settings"
     var id: String { rawValue }
     var icon: String {
         switch self {
         case .home: "house"
         case .notes: "record.circle"
+        case .voice: "person.wave.2"
         case .dictionary: "character.book.closed"
         case .snippets: "scissors"
         case .style: "textformat"
@@ -56,6 +57,7 @@ struct MainView: View {
                     switch store.page {
                     case .home: HomePage()
                     case .notes: MeetingsPage()
+                    case .voice: VoicePage()
                     case .dictionary: DictionaryPage()
                     case .snippets: SnippetsPage()
                     case .style: StylePage()

@@ -3,3 +3,4 @@ models/
 .DS_Store
 *.icns.tmp
 LAUNCH.md
+__pycache__/
