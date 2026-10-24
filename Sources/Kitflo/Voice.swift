@@ -1,5 +1,6 @@
 import AppKit
 import AVFoundation
+import CryptoKit
 import Observation
 import UniformTypeIdentifiers
 
@@ -358,13 +359,19 @@ struct VoiceAPIConfig: Codable {
         if phase != .settingUp { phase = .idle }
     }
 
-    struct Health: Codable { let status: String; let error: String? }
+    struct Health: Codable { let status: String; let error: String?; let proof: String? }
 
+    /// nil unless the answer comes from the engine Kitflo started: it must sign a fresh nonce with our per-launch key,
+    /// so another process squatting on the port can't impersonate it and receive the key or recordings.
     func health() async -> Health? {
-        var req = URLRequest(url: base.appending(path: "health"))
+        let nonce = UUID().uuidString
+        var req = URLRequest(url: base.appending(path: "health").appending(queryItems: [URLQueryItem(name: "nonce", value: nonce)]))
         req.timeoutInterval = 3
-        guard let (d, _) = try? await URLSession.shared.data(for: req) else { return nil }
-        return try? JSONDecoder().decode(Health.self, from: d)
+        guard let (d, _) = try? await URLSession.shared.data(for: req),
+              let h = try? JSONDecoder().decode(Health.self, from: d) else { return nil }
+        let mac = HMAC<SHA256>.authenticationCode(for: Data(nonce.utf8), using: SymmetricKey(data: Data(appKey.utf8)))
+        let expected = mac.map { String(format: "%02x", $0) }.joined()
+        return h.proof == expected ? h : nil
     }
 
     func ready() async -> Bool { await health()?.status == "ready" }

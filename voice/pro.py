@@ -426,11 +426,52 @@ def sf_read(path):
     return x.mean(axis=1), sr
 
 
+# SpeechMOS (MIT) code pinned to an exact commit, and its weights, both checked by SHA-256 before anything is imported:
+# a hub tag can be moved to different code, and torch.hub would run it.
+SPEECHMOS_SHA = "ed25eacbfa42b99156c36ebec67a733b5dbb9b79"  # tag v1.2.0
+SPEECHMOS_ZIP_SHA256 = "2c948956d7b07b4f7eed11e249fed5a1b617802749f5a55a200c11dcbd271ed6"
+UTMOS_URL = "https://github.com/tarepan/SpeechMOS/releases/download/v1.0.0/utmos22_strong_step7459_v1.pt"
+UTMOS_SHA256 = "38aa51ab79e2a4e09a1449758a4b37e9cbb2e8235a49662a732d33a9ba1e9bff"
+
+
+def _fetch_verified(url, path, sha256):
+    import hashlib
+    import urllib.request
+
+    def digest(p):
+        h = hashlib.sha256()
+        with open(p, "rb") as f:
+            for b in iter(lambda: f.read(1 << 20), b""):
+                h.update(b)
+        return h.hexdigest()
+
+    if not (os.path.isfile(path) and digest(path) == sha256):
+        tmp = path + ".part"
+        urllib.request.urlretrieve(url, tmp)
+        if digest(tmp) != sha256:
+            os.remove(tmp)
+            raise RuntimeError("download failed its checksum")
+        os.replace(tmp, path)
+    return path
+
+
 def utmos_model():
-    """UTMOS22 strong from torch hub (cached after first use); None if it can't be loaded, so A/B still reports match and CER."""
+    """UTMOS22 strong (verified code and weights, cached after first use); None if it can't be loaded, so A/B still reports match and CER."""
     try:
+        import zipfile
         import torch
-        return torch.hub.load("tarepan/SpeechMOS:v1.2.0", "utmos22_strong", trust_repo=True).eval()
+        hub = torch.hub.get_dir()
+        os.makedirs(os.path.join(hub, "checkpoints"), exist_ok=True)
+        repo = os.path.join(hub, f"kitflo_SpeechMOS_{SPEECHMOS_SHA}")
+        if not os.path.isfile(os.path.join(repo, "hubconf.py")):
+            z = _fetch_verified(f"https://codeload.github.com/tarepan/SpeechMOS/zip/{SPEECHMOS_SHA}", repo + ".zip", SPEECHMOS_ZIP_SHA256)
+            with zipfile.ZipFile(z) as f:
+                f.extractall(hub)
+            os.replace(os.path.join(hub, f"SpeechMOS-{SPEECHMOS_SHA}"), repo)
+            os.remove(z)
+        # hubconf finds the weights in the hub cache by file name, so a verified copy there is what it loads
+        _fetch_verified(UTMOS_URL, os.path.join(hub, "checkpoints", os.path.basename(UTMOS_URL)), UTMOS_SHA256)
+        return torch.hub.load(repo, "utmos22_strong", source="local").eval()
     except Exception as e:
         print(f"UTMOS unavailable: {type(e).__name__}", file=sys.stderr, flush=True)
         return None

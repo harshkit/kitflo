@@ -932,7 +932,10 @@ class Handler(BaseHTTPRequestHandler):
             if n > MAX_BODY:
                 raise ApiError(413, "That request is larger than 50 MB. Send a shorter recording.")
             if path == "/health" and method == "GET":
-                return self.send(200, {"status": STATE["status"], "device": DEVICE, "error": STATE["error"]})
+                h = {"status": STATE["status"], "device": DEVICE, "error": STATE["error"]}
+                if q.get("nonce"):  # proves to Kitflo this is the engine it started, not something else squatting the port
+                    h["proof"] = hmac.new(CFG["key"].encode(), q["nonce"].encode(), "sha256").hexdigest()
+                return self.send(200, h)
             if not self.authorized(path):
                 raise ApiError(401, "Kitflo's voice engine didn't accept that key. Check the API key in Kitflo's Voice settings.")
             self.body = self.rfile.read(n) if n else b""
